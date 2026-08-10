@@ -6,6 +6,7 @@
 #include "Global.h"
 #include "SettingsChangeListener.h"
 #include "RenameUtils.h"
+#include "KeyboardHookController.h"
 
 namespace winrt::FastCopy::implementation
 {
@@ -16,6 +17,14 @@ namespace winrt::FastCopy::implementation
 	void SettingsViewModel::Notify(bool value)
 	{
 		m_model.Set(Settings::Notify, value);
+	}
+	bool SettingsViewModel::KeyboardIntegration()
+	{
+		return KeyboardHookController::IsEnabled();
+	}
+	void SettingsViewModel::KeyboardIntegration(bool value)
+	{
+		KeyboardHookController::SetEnabled(value);
 	}
 	int SettingsViewModel::RenameBehavior()
 	{
