@@ -41,7 +41,7 @@ namespace
         return effect;
     }
 
-    std::optional<std::vector<std::wstring>> ReadShellItems(IDataObject* dataObject)
+    std::optional<std::vector<wil::unique_cotaskmem_string>> ReadShellItems(IDataObject* dataObject)
     {
         ComPtr<IShellItemArray> items;
         if (FAILED(SHCreateShellItemArrayFromDataObject(dataObject, IID_PPV_ARGS(&items))))
@@ -55,7 +55,7 @@ namespace
             return std::nullopt;
         }
 
-        std::vector<std::wstring> paths;
+        std::vector<wil::unique_cotaskmem_string> paths;
         paths.reserve(itemCount);
         for (DWORD index = 0; index < itemCount; ++index)
         {
@@ -66,12 +66,12 @@ namespace
             {
                 return std::nullopt;
             }
-            paths.emplace_back(path.get());
+            paths.push_back(std::move(path));
         }
         return paths;
     }
 
-    std::optional<std::vector<std::wstring>> ReadDropFiles(IDataObject* dataObject)
+    std::optional<std::vector<wil::unique_cotaskmem_string>> ReadDropFiles(IDataObject* dataObject)
     {
         FORMATETC format{};
         format.cfFormat = CF_HDROP;
@@ -92,19 +92,23 @@ namespace
             return std::nullopt;
         }
 
-        std::vector<std::wstring> paths;
+        std::vector<wil::unique_cotaskmem_string> paths;
         auto const count = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
         paths.reserve(count);
         for (UINT index = 0; index < count; ++index)
         {
             auto const length = DragQueryFileW(drop, index, nullptr, 0);
-            std::wstring path(length + 1, L'\0');
-            if (length == 0 || DragQueryFileW(drop, index, path.data(), length + 1) != length)
+            if (length == 0)
             {
                 paths.clear();
                 break;
             }
-            path.resize(length);
+            wil::unique_cotaskmem_string path(static_cast<PWSTR>(CoTaskMemAlloc((length + 1) * sizeof(wchar_t))));
+            if (!path || DragQueryFileW(drop, index, path.get(), length + 1) != length)
+            {
+                paths.clear();
+                break;
+            }
             paths.push_back(std::move(path));
         }
 

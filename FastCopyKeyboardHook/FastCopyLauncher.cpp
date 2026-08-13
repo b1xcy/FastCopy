@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstdio>
 #include <format>
+#include <string>
 
 namespace
 {
@@ -55,12 +56,13 @@ namespace
         }
 
         bool succeeded = true;
-        for (auto source : transfer.paths)
+        for (auto const& source : transfer.paths)
         {
-            std::ranges::replace(source, L'\\', L'/');
-            auto const length = source.size();
+            std::wstring normalized{ source.get() };
+            std::ranges::replace(normalized, L'\\', L'/');
+            auto const length = normalized.size();
             succeeded = fwrite(&length, sizeof(length), 1, file) == 1 &&
-                fwrite(source.data(), sizeof(wchar_t), length, file) == length;
+                fwrite(normalized.data(), sizeof(wchar_t), length, file) == length;
             if (!succeeded)
             {
                 break;
