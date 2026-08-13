@@ -1,10 +1,14 @@
 #include "ClipboardFileTransfer.h"
 #include "ExplorerWindow.h"
-#include "FastCopyLauncher.h"
+#include "ClipboardLauncher.h"
 #include "../Public/KeyboardHookSettings.h"
+
+#include <wil/result_macros.h>
 
 #include <Windows.h>
 #include <ole2.h>
+
+#include <string>
 
 namespace
 {
@@ -22,6 +26,22 @@ namespace
     bool shiftDown{};
     bool altDown{};
     bool winDown{};
+
+    void ShowError(char const* message)
+    {
+        if (!message)
+        {
+            message = "Unknown error";
+        }
+
+        auto const length = MultiByteToWideChar(CP_UTF8, 0, message, -1, nullptr, 0);
+        std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
+        if (length > 0)
+        {
+            MultiByteToWideChar(CP_UTF8, 0, message, -1, wide.data(), length);
+        }
+        MessageBoxW(nullptr, wide.c_str(), L"RoboCopyEx", MB_OK | MB_ICONERROR);
+    }
 
     bool RegisterPasteHotKey()
     {
@@ -129,7 +149,18 @@ namespace
             }
             return 0;
         case PasteMessage:
-            HandlePaste(reinterpret_cast<HWND>(parameter));
+            try
+            {
+                HandlePaste(reinterpret_cast<HWND>(parameter));
+            }
+            catch (wil::ResultException const& e)
+            {
+                ShowError(e.what());
+            }
+            catch (std::exception const& e)
+            {
+                ShowError(e.what());
+            }
             return 0;
         case WM_TIMER:
             if (parameter == PasteHotKeyRestoreTimerId)
@@ -227,12 +258,12 @@ namespace
     }
 }
 
-int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
-{
-    if (!KeyboardHookSettings::IsEnabled())
+    int Run(HINSTANCE instance)
     {
-        return 0;
-    }
+        if (!KeyboardHookSettings::IsEnabled())
+        {
+            return 0;
+        }
 
     auto const singleton = CreateMutexW(nullptr, FALSE, KeyboardHookSettings::SingletonName);
     if (!singleton || GetLastError() == ERROR_ALREADY_EXISTS)
@@ -313,4 +344,22 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
     OleUninitialize();
     CloseHandle(singleton);
     return 0;
+    }
+
+int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
+{
+    try
+    {
+        return Run(instance);
+    }
+    catch (wil::ResultException const& e)
+    {
+        ShowError(e.what());
+        return 1;
+    }
+    catch (std::exception const& e)
+    {
+        ShowError(e.what());
+        return 1;
+    }
 }
