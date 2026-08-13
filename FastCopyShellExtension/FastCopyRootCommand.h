@@ -10,23 +10,16 @@ class __declspec(uuid("3282E233-C5D3-4533-9B25-44B8AAAFACFA")) FastCopyRootComma
     <
         Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
         IExplorerCommand,
-        IEnumExplorerCommand,
-        IObjectWithSite
+        IEnumExplorerCommand
     >
 {
     boost::container::static_vector<Microsoft::WRL::ComPtr<FastCopySubCommand>, 4> m_subCommands{};
-    Microsoft::WRL::ComPtr<IUnknown> m_site;
-
     decltype(m_subCommands.begin()) m_subCommandIter;
 
     void ensureSubCommands();
 public:
 
     FastCopyRootCommand() = default;
-
-    // IObjectWithSite
-    IFACEMETHODIMP SetSite(IUnknown* pUnkSite) override;
-    IFACEMETHODIMP GetSite(REFIID riid, void** ppvSite) override;
 
 #pragma region IExplorerCommand
     HRESULT GetTitle(IShellItemArray* items, PWSTR* name) override;

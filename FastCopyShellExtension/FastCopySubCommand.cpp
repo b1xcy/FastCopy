@@ -1,17 +1,35 @@
-﻿#include "FastCopySubCommand.h"
+#include "FastCopySubCommand.h"
 #include "CopyOperationNames.h"
 #include <Shlwapi.h>
 #include "DllIconFormatter.h"
-#include <format>
 #include "ShellItemArray.h"
 #include "Recorder.h"
-#include <cassert>
-#include "ShellWindows.h"
 #include "ShellItem.h"
-#include <algorithm>
 #include "Registry.h"
-#include <wil/resource.h>
-#include <wil/com.h>
+#include "FastCopyLauncher.h"
+#include "ExplorerFolder.h"
+#include <wil/result_macros.h>
+#include <Windows.h>
+#include <string>
+#include <exception>
+
+namespace
+{
+	std::wstring ToWide(char const* text)
+	{
+		if (!text)
+		{
+			return {};
+		}
+		auto const length = MultiByteToWideChar(CP_UTF8, 0, text, -1, nullptr, 0);
+		std::wstring result(length > 0 ? length - 1 : 0, L'\0');
+		if (length > 0)
+		{
+			MultiByteToWideChar(CP_UTF8, 0, text, -1, result.data(), length);
+		}
+		return result;
+	}
+}
 
 void FastCopySubCommand::recordFilesImpl(IShellItemArray* selection)
 {
@@ -25,24 +43,10 @@ void FastCopySubCommand::recordFilesImpl(IShellItemArray* selection)
 
 void FastCopySubCommand::callMainProgramImpl(std::wstring_view arg)
 {
-    std::wstring argTransform{ arg };
-    std::transform(argTransform.begin(), argTransform.end(), argTransform.begin(), [](wchar_t c) { return c == L'\\' ? L'/' : c; });
-    auto cmd = std::format(LR"(fastcopy://"{}"|"{}")", argTransform, Registry::Record());
-#if (defined _DEBUG) || (defined DEBUG)
-    OutputDebugString(cmd.data());
-#endif
-    AllowSetForegroundWindow(ASFW_ANY);
-    ShellExecute(
-        NULL,
-        L"open",
-        cmd.data(),
-        nullptr,
-        nullptr,
-        SW_SHOW
-	);
+    LaunchFastCopy(arg, Registry::Record());
 }
 
-FastCopySubCommand::FastCopySubCommand(CopyOperation op, IUnknown* site) : m_op{ op }, m_site{ site }
+FastCopySubCommand::FastCopySubCommand(CopyOperation op) : m_op{ op }
 {
 }
 
@@ -95,20 +99,19 @@ HRESULT FastCopySubCommand::GetState(IShellItemArray* selection, BOOL, EXPCMDSTA
     return S_OK;
 }
 
-HRESULT FastCopySubCommand::Invoke(IShellItemArray* selection, IBindCtx* ctx)
+void FastCopySubCommand::invokeImpl(IShellItemArray* selection, IBindCtx*)
 {
     /*
            if no files are selected, selection contains 1 element to the current invoked folder (Windows 11 only)
            On Windows 10, `selection` is `nullptr`
     */
 
-
     switch (m_op)
     {
         case CopyOperation::Copy: [[fallthrough]];
         case CopyOperation::Move: 
             recordFilesImpl(selection);
-            break;
+            return;
         case CopyOperation::Paste:
         {
             //On Windows 11, use selection directly
@@ -116,75 +119,43 @@ HRESULT FastCopySubCommand::Invoke(IShellItemArray* selection, IBindCtx* ctx)
             {
                 ShellItem psi{ shellItemArray[0] };
                 callMainProgramImpl(psi.GetDisplayName());
-                return S_OK;
+                return;
             }
 
-            //On Windows 10, selection will be nullptr, so we find the active shell window
-            if (m_site)
+            // On Windows 10 selection is null, so resolve the active Explorer window.
+            // The site is deliberately not retained to avoid a COM reference cycle
+            // that kept the COM surrogate alive and made uninstallation slow.
+            if (auto folder = GetForegroundExplorerFolder())
             {
-                wil::com_ptr<IShellBrowser> spSB;
-                if (SUCCEEDED(IUnknown_QueryService(m_site.Get(), SID_STopLevelBrowser, IID_PPV_ARGS(&spSB))))
-                {
-                     wil::com_ptr<IShellView> spSV;
-                     if (SUCCEEDED(spSB->QueryActiveShellView(&spSV)))
-                     {
-                         if (auto spFV = spSV.try_query<IFolderView>())
-                         {
-                             wil::com_ptr<IPersistFolder2> spPF2;
-                             if (SUCCEEDED(spFV->GetFolder(IID_PPV_ARGS(&spPF2))))
-                             {
-                                 wil::unique_cotaskmem_ptr<ITEMIDLIST> pidl;
-                                 if (SUCCEEDED(spPF2->GetCurFolder(wil::out_param(pidl))))
-                                 {
-                                     wchar_t path[MAX_PATH];
-                                     if (SHGetPathFromIDListW(pidl.get(), path))
-                                     {
-                                         callMainProgramImpl(path);
-                                         return S_OK;
-                                     }
-                                 }
-                             }
-                         }
-                     }
-                }
-            }
-
-            //Windows 10 fallback
-            if (auto currentForegroundExplorer = ShellWindows::GetForegroundExplorer())
-            {
-                constexpr static std::wstring_view protocolPrefix{ L"file:///" };
-                auto path = currentForegroundExplorer->LocationURL();
-
-                std::wstring pathUnescaped(wcslen(path.get()), L'\0');
-                DWORD bufferSize = pathUnescaped.size();
-                if (UrlUnescape(
-                    path.get(),
-                    pathUnescaped.data(),
-                    &bufferSize,
-                    URL_DONT_UNESCAPE_EXTRA_INFO
-                ) == E_POINTER)
-                {
-                    pathUnescaped.resize(bufferSize + 1);
-                    UrlUnescape(
-                        path.get(),
-                        pathUnescaped.data(),
-                        &bufferSize,
-                        URL_DONT_UNESCAPE_EXTRA_INFO
-                    );
-                }
-
-                assert(pathUnescaped.starts_with(protocolPrefix));
-                callMainProgramImpl(std::wstring{ pathUnescaped.substr(protocolPrefix.size()).data()});
-                return S_OK;
+                callMainProgramImpl(*folder);
+                return;
             }
             break;
         }
         case CopyOperation::Delete:
             recordFilesImpl(selection);
             callMainProgramImpl(L"");
-            break;
+            return;
     }
-    return S_OK;
+}
+
+HRESULT FastCopySubCommand::Invoke(IShellItemArray* selection, IBindCtx* ctx)
+{
+    try
+    {
+        invokeImpl(selection, ctx);
+        return S_OK;
+    }
+    catch (wil::ResultException const& e)
+    {
+        MessageBoxW(nullptr, ToWide(e.what()).c_str(), L"RoboCopyEx", MB_OK | MB_ICONERROR);
+        return e.GetErrorCode();
+    }
+    catch (std::exception const& e)
+    {
+        MessageBoxW(nullptr, ToWide(e.what()).c_str(), L"RoboCopyEx", MB_OK | MB_ICONERROR);
+        return E_FAIL;
+    }
 }
 
 HRESULT FastCopySubCommand::GetFlags(EXPCMDFLAGS* flags)

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include "ShellItem.h"
 #include "Registry.h"
+#include "RecordFile.h"
 #include <winrt/Windows.Storage.h>
 
 static std::filesystem::path const& GetLocalDataFolder()
@@ -36,12 +37,7 @@ Recorder::Recorder(CopyOperation op)
 
 Recorder& Recorder::operator<<(ShellItem& item)
 {
-	std::wstring buf {item.GetDisplayName()};
-	std::transform(buf.begin(), buf.end(), buf.begin(), [](wchar_t c) { return c == L'\\' ? L'/' : c; });
-	size_t const length = buf.size();
-	fwrite(&length, sizeof(length), 1, m_fs);
-	fwrite(buf.data(), 2, length, m_fs);
-
+	RecordFile::WriteEntry(m_fs, item.GetDisplayName());
 	return *this;
 }
 

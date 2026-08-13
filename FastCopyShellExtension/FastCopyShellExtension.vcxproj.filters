@@ -30,9 +30,6 @@
     <ClCompile Include="CopyOperationNames.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Registry.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="..\Public\ShellItemArray.cpp">
       <Filter>COM</Filter>
@@ -40,10 +37,16 @@
     <ClCompile Include="..\Public\ShellItem.cpp">
       <Filter>COM</Filter>
     </ClCompile>
-    <ClCompile Include="ShellWindows.cpp">
+    <ClCompile Include="..\Public\Registry.cpp">
       <Filter>COM</Filter>
     </ClCompile>
-    <ClCompile Include="WebBrowser2.cpp">
+    <ClCompile Include="..\Public\RecordFile.cpp">
+      <Filter>COM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Public\ExplorerFolder.cpp">
+      <Filter>COM</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Public\FastCopyLauncher.cpp">
       <Filter>COM</Filter>
     </ClCompile>
     <ClCompile Include="FastCopyRootCommand.cpp">
@@ -78,19 +81,22 @@
     <ClInclude Include="CopyOperationNames.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Registry.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\Public\ShellItem.h">
       <Filter>COM</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\ShellItemArray.h">
       <Filter>COM</Filter>
     </ClInclude>
-    <ClInclude Include="ShellWindows.h">
+    <ClInclude Include="..\Public\Registry.h">
       <Filter>COM</Filter>
     </ClInclude>
-    <ClInclude Include="WebBrowser2.h">
+    <ClInclude Include="..\Public\RecordFile.h">
+      <Filter>COM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ExplorerFolder.h">
+      <Filter>COM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\FastCopyLauncher.h">
       <Filter>COM</Filter>
     </ClInclude>
     <ClInclude Include="FastCopyRootCommand.h">

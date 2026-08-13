@@ -287,6 +287,10 @@ xcopy "$(OutputPath)$(ProjectName).dll" "$(SolutionDir)$(Platform)\$(Configurati
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Public\ExplorerFolder.cpp" />
+    <ClCompile Include="..\Public\FastCopyLauncher.cpp" />
+    <ClCompile Include="..\Public\RecordFile.cpp" />
+    <ClCompile Include="..\Public\Registry.cpp" />
     <ClCompile Include="..\Public\ShellItem.cpp" />
     <ClCompile Include="..\Public\ShellItemArray.cpp" />
     <ClCompile Include="CopyOperationNames.cpp" />
@@ -296,15 +300,16 @@ xcopy "$(OutputPath)$(ProjectName).dll" "$(SolutionDir)$(Platform)\$(Configurati
     <ClCompile Include="FastCopySubCommand.cpp" />
     <ClCompile Include="IconProvider.cpp" />
     <ClCompile Include="Recorder.cpp" />
-    <ClCompile Include="Registry.cpp" />
-    <ClCompile Include="ShellWindows.cpp" />
-    <ClCompile Include="WebBrowser2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="Source.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Public\ExplorerFolder.h" />
+    <ClInclude Include="..\Public\FastCopyLauncher.h" />
+    <ClInclude Include="..\Public\RecordFile.h" />
+    <ClInclude Include="..\Public\Registry.h" />
     <ClInclude Include="..\Public\ShellItem.h" />
     <ClInclude Include="..\Public\ShellItemArray.h" />
     <ClInclude Include="CopyOperation.h" />
@@ -314,10 +319,7 @@ xcopy "$(OutputPath)$(ProjectName).dll" "$(SolutionDir)$(Platform)\$(Configurati
     <ClInclude Include="FastCopySubCommand.h" />
     <ClInclude Include="IconProvider.h" />
     <ClInclude Include="Recorder.h" />
-    <ClInclude Include="Registry.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="ShellWindows.h" />
-    <ClInclude Include="WebBrowser2.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FastCopyShellExtension.rc" />

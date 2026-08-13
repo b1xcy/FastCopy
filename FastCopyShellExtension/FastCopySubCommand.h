@@ -15,9 +15,9 @@ class FastCopySubCommand final :
 
     void recordFilesImpl(IShellItemArray* selection);
     static void callMainProgramImpl(std::wstring_view arg);
-    Microsoft::WRL::ComPtr<IUnknown> m_site;
+    void invokeImpl(IShellItemArray* selection, IBindCtx* ctx);
 public:
-    FastCopySubCommand(CopyOperation op, IUnknown* site = nullptr);
+    explicit FastCopySubCommand(CopyOperation op);
 
     // IExplorerCommand
     HRESULT GetTitle(IShellItemArray* items, PWSTR* name) override;

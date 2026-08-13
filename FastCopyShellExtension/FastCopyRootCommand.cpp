@@ -15,21 +15,10 @@ void FastCopyRootCommand::ensureSubCommands()
 	if (!m_subCommands.empty())
 		return;
 
-	m_subCommands.emplace_back(Microsoft::WRL::Make<FastCopySubCommand>(CopyOperation::Copy, m_site.Get()));
-	m_subCommands.emplace_back(Microsoft::WRL::Make<FastCopySubCommand>(CopyOperation::Move, m_site.Get()));
-	m_subCommands.emplace_back(Microsoft::WRL::Make<FastCopySubCommand>(CopyOperation::Paste, m_site.Get()));
-	m_subCommands.emplace_back(Microsoft::WRL::Make<FastCopySubCommand>(CopyOperation::Delete, m_site.Get()));
-}
-
-HRESULT FastCopyRootCommand::SetSite(IUnknown* pUnkSite)
-{
-    m_site = pUnkSite;
-    return S_OK;
-}
-
-HRESULT FastCopyRootCommand::GetSite(REFIID riid, void** ppvSite)
-{
-    return m_site.CopyTo(riid, ppvSite);
+	m_subCommands.emplace_back(Microsoft::WRL::Make<FastCopySubCommand>(CopyOperation::Copy));
+	m_subCommands.emplace_back(Microsoft::WRL::Make<FastCopySubCommand>(CopyOperation::Move));
+	m_subCommands.emplace_back(Microsoft::WRL::Make<FastCopySubCommand>(CopyOperation::Paste));
+	m_subCommands.emplace_back(Microsoft::WRL::Make<FastCopySubCommand>(CopyOperation::Delete));
 }
 
 HRESULT FastCopyRootCommand::GetTitle(IShellItemArray*, PWSTR* name)
