@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "KeyboardHookController.h"
 #include "../Public/KeyboardHookSettings.h"
+#include "../Public/ModulePath.h"
+
+#include <wil/resource.h>
+#include <wil/result_macros.h>
 
 #include <filesystem>
 
@@ -26,23 +30,12 @@ void KeyboardHookController::Start()
         return;
     }
 
-    std::wstring modulePath(32768, L'\0');
-    auto const length = GetModuleFileNameW(nullptr, modulePath.data(), static_cast<DWORD>(modulePath.size()));
-    if (length == 0 || length == modulePath.size())
-    {
-        return;
-    }
-    modulePath.resize(length);
-
-    auto const hookPath = std::filesystem::path{ modulePath }.parent_path() / L"FastCopyKeyboardHook.exe";
-    if (!std::filesystem::exists(hookPath))
-    {
-        return;
-    }
+    auto const hookPath = std::filesystem::path{ ModulePath() }.parent_path() / L"FastCopyKeyboardHook.exe";
+    THROW_HR_IF(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND), !std::filesystem::exists(hookPath));
 
     STARTUPINFOW startupInfo{ sizeof(startupInfo) };
-    PROCESS_INFORMATION processInfo{};
-    if (CreateProcessW(
+    wil::unique_process_information processInfo;
+    THROW_IF_WIN32_BOOL_FALSE(CreateProcessW(
         hookPath.c_str(),
         nullptr,
         nullptr,
@@ -52,11 +45,7 @@ void KeyboardHookController::Start()
         nullptr,
         hookPath.parent_path().c_str(),
         &startupInfo,
-        &processInfo))
-    {
-        CloseHandle(processInfo.hThread);
-        CloseHandle(processInfo.hProcess);
-    }
+        processInfo.addressof()));
 }
 
 void KeyboardHookController::Stop()

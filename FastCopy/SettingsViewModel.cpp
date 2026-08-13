@@ -8,6 +8,28 @@
 #include "RenameUtils.h"
 #include "KeyboardHookController.h"
 
+#include <wil/result_macros.h>
+
+#include <string>
+
+namespace
+{
+	void ShowError(char const* message)
+	{
+		if (!message)
+		{
+			message = "Unknown error";
+		}
+		auto const length = MultiByteToWideChar(CP_UTF8, 0, message, -1, nullptr, 0);
+		std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
+		if (length > 0)
+		{
+			MultiByteToWideChar(CP_UTF8, 0, message, -1, wide.data(), length);
+		}
+		MessageBoxW(nullptr, wide.c_str(), L"RoboCopyEx", MB_OK | MB_ICONERROR);
+	}
+}
+
 namespace winrt::FastCopy::implementation
 {
 	bool SettingsViewModel::Notify()
@@ -24,7 +46,18 @@ namespace winrt::FastCopy::implementation
 	}
 	void SettingsViewModel::KeyboardIntegration(bool value)
 	{
-		KeyboardHookController::SetEnabled(value);
+		try
+		{
+			KeyboardHookController::SetEnabled(value);
+		}
+		catch (wil::ResultException const& e)
+		{
+			ShowError(e.what());
+		}
+		catch (std::exception const& e)
+		{
+			ShowError(e.what());
+		}
 	}
 	int SettingsViewModel::RenameBehavior()
 	{

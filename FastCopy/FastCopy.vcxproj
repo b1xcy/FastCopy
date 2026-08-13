@@ -218,6 +218,7 @@ xcopy "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\RobocopyInjection.dll
   <ItemGroup>
     <ClInclude Include="..\Public\PackageConfig.h" />
     <ClInclude Include="..\Public\KeyboardHookSettings.h" />
+    <ClInclude Include="..\Public\ModulePath.h" />
     <ClInclude Include="..\Public\PropertyDescription.h" />
     <ClInclude Include="..\Public\ShellItem2.h" />
     <ClInclude Include="AcrylicHelper.h" />
@@ -399,6 +400,9 @@ xcopy "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\RobocopyInjection.dll
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Public\ModulePath.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\Public\PropertyDescription.cpp" />
     <ClCompile Include="..\Public\ShellItem2.cpp" />
     <ClCompile Include="AcrylicHelper.cpp" />
