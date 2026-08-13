@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Windows.h>
+#include <wil/registry.h>
 
 namespace KeyboardHookSettings
 {
@@ -11,49 +12,14 @@ namespace KeyboardHookSettings
 
     inline bool IsEnabled()
     {
-        DWORD value = 0;
-        DWORD valueSize = sizeof(value);
-        auto const result = RegGetValueW(
-            HKEY_CURRENT_USER,
-            RegistryPath,
-            EnabledValueName,
-            RRF_RT_REG_DWORD,
-            nullptr,
-            &value,
-            &valueSize);
-        if (result == ERROR_FILE_NOT_FOUND || result == ERROR_PATH_NOT_FOUND)
-        {
-            return true;
-        }
-        return result == ERROR_SUCCESS && value != 0;
+        auto const value = wil::reg::try_get_value_dword(HKEY_CURRENT_USER, RegistryPath, EnabledValueName);
+        // A missing value (first run) means enabled.
+        return !value || *value != 0;
     }
 
     inline bool SetEnabled(bool enabled)
     {
-        HKEY key{};
-        if (RegCreateKeyExW(
-            HKEY_CURRENT_USER,
-            RegistryPath,
-            0,
-            nullptr,
-            0,
-            KEY_SET_VALUE,
-            nullptr,
-            &key,
-            nullptr) != ERROR_SUCCESS)
-        {
-            return false;
-        }
-
-        DWORD const value = enabled ? 1 : 0;
-        auto const result = RegSetValueExW(
-            key,
-            EnabledValueName,
-            0,
-            REG_DWORD,
-            reinterpret_cast<BYTE const*>(&value),
-            sizeof(value));
-        RegCloseKey(key);
-        return result == ERROR_SUCCESS;
+        auto const key = wil::reg::create_unique_key(HKEY_CURRENT_USER, RegistryPath, wil::reg::key_access::readwrite);
+        return SUCCEEDED(wil::reg::set_value_dword_nothrow(key.get(), EnabledValueName, enabled ? 1 : 0));
     }
 }

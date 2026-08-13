@@ -1,9 +1,12 @@
 #include "ClipboardFileTransfer.h"
 
+#include <ole2.h>
+
+#include <wil/resource.h>
+
 #include <ShlObj_core.h>
 #include <ShObjIdl_core.h>
 #include <shellapi.h>
-#include <ole2.h>
 #include <wrl/client.h>
 
 namespace
@@ -57,14 +60,13 @@ namespace
         for (DWORD index = 0; index < itemCount; ++index)
         {
             ComPtr<IShellItem> item;
-            PWSTR path{};
+            wil::unique_cotaskmem_string path;
             if (FAILED(items->GetItemAt(index, &item)) ||
-                FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, &path)))
+                FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, wil::out_param(path))))
             {
                 return std::nullopt;
             }
-            paths.emplace_back(path);
-            CoTaskMemFree(path);
+            paths.emplace_back(path.get());
         }
         return paths;
     }
