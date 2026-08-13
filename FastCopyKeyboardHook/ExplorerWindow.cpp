@@ -40,9 +40,11 @@ namespace
     }
 
     // Encapsulates the COM types used to resolve the folder of the active
-    // Explorer window. COM failures throw (wil::ResultException) so callers
-    // catch them at the outer boundary; entries that are not Explorer tabs
-    // are skipped, and a window without a matching shell view reports nullopt.
+    // Explorer window. Failures to enumerate the shell windows collection
+    // throw (wil::ResultException) so callers catch them at the outer
+    // boundary; failures that are expected for individual entries are
+    // skipped, and a window whose active view does not support the older
+    // IFolderView interfaces falls back to the browser location URL.
     class ExplorerFolderResolver
     {
     public:
@@ -64,8 +66,7 @@ namespace
                 itemIndex.lVal = index;
 
                 ComPtr<IDispatch> dispatch;
-                THROW_IF_FAILED(m_shellWindows->Item(itemIndex, &dispatch));
-                if (!dispatch)
+                if (FAILED(m_shellWindows->Item(itemIndex, &dispatch)) || !dispatch)
                 {
                     continue;
                 }
@@ -77,8 +78,8 @@ namespace
                 }
 
                 SHANDLE_PTR browserWindowValue{};
-                THROW_IF_FAILED(browser->get_HWND(&browserWindowValue));
-                if (reinterpret_cast<HWND>(browserWindowValue) != frameWindow)
+                if (FAILED(browser->get_HWND(&browserWindowValue)) ||
+                    reinterpret_cast<HWND>(browserWindowValue) != frameWindow)
                 {
                     continue;
                 }
@@ -106,9 +107,19 @@ namespace
 
                 if (threadInfo.hwndFocus == viewWindow || IsChild(viewWindow, threadInfo.hwndFocus))
                 {
-                    if (auto folder = GetFolderFromView(shellView.Get()))
+                    try
                     {
-                        return folder;
+                        if (auto folder = GetFolderFromView(shellView.Get()))
+                        {
+                            return folder;
+                        }
+                    }
+                    catch (wil::ResultException const&)
+                    {
+                        // Explorer versions with tabs can expose a browser
+                        // location while the active shell view does not support
+                        // the older IFolderView interfaces; fall back to the
+                        // location URL instead of failing the paste.
                     }
                 }
             }
@@ -142,8 +153,7 @@ namespace
         static std::optional<std::filesystem::path> GetFolderFromLocation(IWebBrowser2* browser)
         {
             wil::unique_bstr location;
-            THROW_IF_FAILED(browser->get_LocationURL(location.put()));
-            if (!location)
+            if (FAILED(browser->get_LocationURL(location.put())) || !location)
             {
                 return std::nullopt;
             }
