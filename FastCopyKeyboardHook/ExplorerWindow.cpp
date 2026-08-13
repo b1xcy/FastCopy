@@ -93,6 +93,11 @@ bool IsExplorerWindow(HWND window)
     }
 
     auto const className = GetWindowClass(window);
+    // The desktop is a valid paste target even though it is not an Explorer frame.
+    if (className == L"Progman" || className == L"WorkerW")
+    {
+        return true;
+    }
     return className == L"CabinetWClass" || className == L"ExploreWClass";
 }
 
@@ -108,6 +113,20 @@ std::optional<std::filesystem::path> GetExplorerFolder(HWND expectedForegroundWi
     if (!GetGUIThreadInfo(foregroundThread, &threadInfo) || IsTextEntryWindow(threadInfo.hwndFocus))
     {
         return std::nullopt;
+    }
+
+    // The desktop has no shell view to resolve; its folder is the user's desktop.
+    auto const className = GetWindowClass(expectedForegroundWindow);
+    if (className == L"Progman" || className == L"WorkerW")
+    {
+        PWSTR desktopPath{};
+        if (FAILED(SHGetKnownFolderPath(FOLDERID_Desktop, 0, nullptr, &desktopPath)))
+        {
+            return std::nullopt;
+        }
+        std::filesystem::path result{ desktopPath };
+        CoTaskMemFree(desktopPath);
+        return result;
     }
 
     ComPtr<IShellWindows> shellWindows;
