@@ -40,10 +40,10 @@
     <ClCompile Include="..\Public\ShellItem.cpp">
       <Filter>COM</Filter>
     </ClCompile>
-    <ClCompile Include="ShellWindows.cpp">
+    <ClCompile Include="..\Public\ShellWindows.cpp">
       <Filter>COM</Filter>
     </ClCompile>
-    <ClCompile Include="WebBrowser2.cpp">
+    <ClCompile Include="..\Public\WebBrowser2.cpp">
       <Filter>COM</Filter>
     </ClCompile>
     <ClCompile Include="FastCopyRootCommand.cpp">
@@ -87,10 +87,10 @@
     <ClInclude Include="..\Public\ShellItemArray.h">
       <Filter>COM</Filter>
     </ClInclude>
-    <ClInclude Include="ShellWindows.h">
+    <ClInclude Include="..\Public\ShellWindows.h">
       <Filter>COM</Filter>
     </ClInclude>
-    <ClInclude Include="WebBrowser2.h">
+    <ClInclude Include="..\Public\WebBrowser2.h">
       <Filter>COM</Filter>
     </ClInclude>
     <ClInclude Include="FastCopyRootCommand.h">

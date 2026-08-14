@@ -63,17 +63,31 @@ xcopy "$(TargetPath)" "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\AppX\
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Public\ShellWindows.cpp" />
+    <ClCompile Include="..\Public\WebBrowser2.cpp" />
     <ClCompile Include="ClipboardFileTransfer.cpp" />
+    <ClCompile Include="ExplorerFolderResolver.cpp" />
     <ClCompile Include="ExplorerWindow.cpp" />
     <ClCompile Include="FastCopyLauncher.cpp" />
+    <ClCompile Include="KeyboardHook.cpp" />
+    <ClCompile Include="KeyboardHookApp.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PasteHotKey.cpp" />
+    <ClCompile Include="PasteWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\KeyboardHookSettings.h" />
     <ClInclude Include="..\Public\ModulePath.h" />
+    <ClInclude Include="..\Public\ShellWindows.h" />
+    <ClInclude Include="..\Public\WebBrowser2.h" />
     <ClInclude Include="ClipboardFileTransfer.h" />
+    <ClInclude Include="ExplorerFolderResolver.h" />
     <ClInclude Include="ExplorerWindow.h" />
     <ClInclude Include="FastCopyLauncher.h" />
+    <ClInclude Include="KeyboardHook.h" />
+    <ClInclude Include="KeyboardHookApp.h" />
+    <ClInclude Include="PasteHotKey.h" />
+    <ClInclude Include="PasteWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

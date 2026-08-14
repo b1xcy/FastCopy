@@ -290,6 +290,8 @@ xcopy "$(OutputPath)$(ProjectName).dll" "$(SolutionDir)$(Platform)\$(Configurati
     <ClCompile Include="..\Public\ModulePath.cpp" />
     <ClCompile Include="..\Public\ShellItem.cpp" />
     <ClCompile Include="..\Public\ShellItemArray.cpp" />
+    <ClCompile Include="..\Public\ShellWindows.cpp" />
+    <ClCompile Include="..\Public\WebBrowser2.cpp" />
     <ClCompile Include="CopyOperationNames.cpp" />
     <ClCompile Include="DllIconFormatter.cpp" />
     <ClCompile Include="dllmain.cpp" />
@@ -298,8 +300,6 @@ xcopy "$(OutputPath)$(ProjectName).dll" "$(SolutionDir)$(Platform)\$(Configurati
     <ClCompile Include="IconProvider.cpp" />
     <ClCompile Include="Recorder.cpp" />
     <ClCompile Include="Registry.cpp" />
-    <ClCompile Include="ShellWindows.cpp" />
-    <ClCompile Include="WebBrowser2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -309,6 +309,8 @@ xcopy "$(OutputPath)$(ProjectName).dll" "$(SolutionDir)$(Platform)\$(Configurati
     <ClInclude Include="..\Public\ModulePath.h" />
     <ClInclude Include="..\Public\ShellItem.h" />
     <ClInclude Include="..\Public\ShellItemArray.h" />
+    <ClInclude Include="..\Public\ShellWindows.h" />
+    <ClInclude Include="..\Public\WebBrowser2.h" />
     <ClInclude Include="CopyOperation.h" />
     <ClInclude Include="CopyOperationNames.h" />
     <ClInclude Include="DllIconFormatter.h" />
@@ -318,8 +320,6 @@ xcopy "$(OutputPath)$(ProjectName).dll" "$(SolutionDir)$(Platform)\$(Configurati
     <ClInclude Include="Recorder.h" />
     <ClInclude Include="Registry.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="ShellWindows.h" />
-    <ClInclude Include="WebBrowser2.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FastCopyShellExtension.rc" />
