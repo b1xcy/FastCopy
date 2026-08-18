@@ -3,77 +3,53 @@
 #include <wil/result_macros.h>
 
 PasteWindow::PasteWindow(HINSTANCE instance, Handler handler)
-    : handler_{ std::move(handler) }
+    : m_handler{ std::move(handler) }
 {
-    WNDCLASSW windowClass{};
-    windowClass.hInstance = instance;
-    windowClass.lpfnWndProc = &PasteWindow::StaticProcedure;
-    windowClass.lpszClassName = KeyboardHookSettings::WindowClassName;
-    if (!RegisterClassW(&windowClass))
+    WNDCLASSW windowClass
     {
-        THROW_HR(HRESULT_FROM_WIN32(GetLastError()));
-    }
+        .lpfnWndProc = &PasteWindow::windowProc,
+        .hInstance = instance,
+        .lpszClassName = KeyboardHookSettings::WindowClassName,
+    };
+    THROW_LAST_ERROR_IF(!RegisterClassW(&windowClass));
 
-    window_ = CreateWindowExW(
-        WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+    m_window.reset(CreateWindowExW(
+        0,
         KeyboardHookSettings::WindowClassName,
-        L"",
-        WS_POPUP,
-        0,
-        0,
-        0,
-        0,
         nullptr,
+        0,
+        0,
+        0,
+        0,
+        0,
+        HWND_MESSAGE,
         nullptr,
         instance,
-        this);
-    if (!window_)
-    {
-        THROW_HR(HRESULT_FROM_WIN32(GetLastError()));
-    }
+        this));
+    THROW_LAST_ERROR_IF(!m_window);
 }
 
-PasteWindow::~PasteWindow()
-{
-    if (window_)
-    {
-        DestroyWindow(window_);
-    }
-}
-
-LRESULT PasteWindow::Procedure(UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK PasteWindow::windowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        return 0;
-    case WM_QUERYENDSESSION:
-        return TRUE;
-    case WM_ENDSESSION:
-        if (wParam)
+        case WM_NCCREATE:
         {
-            DestroyWindow(window_);
+            auto const create = reinterpret_cast<CREATESTRUCTW const*>(lParam);
+            SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(create->lpCreateParams));
+            return TRUE;
         }
-        return 0;
-    case WM_CLOSE:
-        DestroyWindow(window_);
-        return 0;
-    default:
-        return handler_ ? handler_(message, wParam, lParam)
-                        : DefWindowProcW(window_, message, wParam, lParam);
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+        case WM_CLOSE:
+            DestroyWindow(window);
+            return 0;
+        default:
+        {
+            if (auto self = reinterpret_cast<PasteWindow*>(GetWindowLongPtrW(window, GWLP_USERDATA)); self && self->m_handler)
+                return self->m_handler(message, wParam, lParam);
+            return DefWindowProcW(window, message, wParam, lParam);
+        }
     }
-}
-
-LRESULT CALLBACK PasteWindow::StaticProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    if (message == WM_NCCREATE)
-    {
-        auto const create = reinterpret_cast<CREATESTRUCTW const*>(lParam);
-        SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(create->lpCreateParams));
-    }
-
-    auto const self = reinterpret_cast<PasteWindow*>(GetWindowLongPtrW(window, GWLP_USERDATA));
-    return self ? self->Procedure(message, wParam, lParam)
-                : DefWindowProcW(window, message, wParam, lParam);
 }

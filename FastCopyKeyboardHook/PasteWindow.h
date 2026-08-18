@@ -2,29 +2,27 @@
 #include "../Public/KeyboardHookSettings.h"
 
 #include <Windows.h>
-
+#include <wil/resource.h>
 #include <functional>
 
-// The hidden message-only window that receives hot-key and paste messages.
-// Window lifecycle messages are handled here; everything else is forwarded
-// to the handler.
+// The message-only window (HWND_MESSAGE) that receives hot-key and paste
+// messages. Window lifecycle messages are handled here; everything else is
+// forwarded to the handler.
 class PasteWindow
 {
 public:
     using Handler = std::function<LRESULT(UINT message, WPARAM wParam, LPARAM lParam)>;
 
     PasteWindow(HINSTANCE instance, Handler handler);
-    ~PasteWindow();
 
     PasteWindow(PasteWindow const&) = delete;
     PasteWindow& operator=(PasteWindow const&) = delete;
 
-    HWND handle() const { return window_; }
+    HWND handle() const { return m_window.get(); }
 
 private:
-    static LRESULT CALLBACK StaticProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
-    LRESULT Procedure(UINT message, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 
-    HWND window_{};
-    Handler handler_;
+    wil::unique_hwnd m_window{};
+    Handler m_handler;
 };
