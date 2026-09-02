@@ -3,28 +3,29 @@
 
 #include <Windows.h>
 
-#include <functional>
+class KeyboardHookApp;
 
 // Installs a WH_KEYBOARD_LL hook and removes it on destruction (RAII).
-// Incoming events are forwarded to the callback.
+// It owns the single switch over the key events: hook plumbing is handled here,
+// key presses and releases call straight into the owner's handler for each.
 class KeyboardHook
 {
 public:
-    using Callback = std::function<LRESULT(int code, WPARAM wParam, LPARAM lParam)>;
-
-    KeyboardHook(HINSTANCE instance, Callback callback);
+    KeyboardHook(HINSTANCE instance, KeyboardHookApp* owner);
     ~KeyboardHook();
 
     KeyboardHook(KeyboardHook const&) = delete;
     KeyboardHook& operator=(KeyboardHook const&) = delete;
 
-    bool installed() const { return hook_ != nullptr; }
+    bool installed() const { return m_hook != nullptr; }
 
 private:
-    static LRESULT CALLBACK Procedure(int code, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK procedure(int code, WPARAM wParam, LPARAM lParam);
 
     static KeyboardHook* s_instance;
 
-    wil::unique_hhook hook_;
-    Callback callback_;
+    // Declared before m_hook so the owner is set before the hook can deliver an
+    // event, and still set while the hook is being removed.
+    KeyboardHookApp* m_owner{};
+    wil::unique_hhook m_hook;
 };

@@ -14,14 +14,11 @@ public:
     PasteHotKey& operator=(PasteHotKey const&) = delete;
 
     bool Register();
-    void Unregister();
-    bool registered() const { return registered_; }
-    int id() const { return id_; }
-
+    bool Unregister();
 private:
-    HWND window_{};
-    int id_{};
-    UINT modifiers_{};
-    UINT virtualKey_{};
-    bool registered_{};
+    HWND m_window{};
+    int m_id{};
+    UINT m_modifiers{};
+    UINT m_virtualKey{};
+    bool m_registered{};
 };

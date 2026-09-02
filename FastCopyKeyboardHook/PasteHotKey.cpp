@@ -1,7 +1,7 @@
 #include "PasteHotKey.h"
 
 PasteHotKey::PasteHotKey(HWND window, int id, UINT modifiers, UINT virtualKey)
-    : window_{ window }, id_{ id }, modifiers_{ modifiers }, virtualKey_{ virtualKey }
+    : m_window{ window }, m_id{ id }, m_modifiers{ modifiers }, m_virtualKey{ virtualKey }
 {
 }
 
@@ -12,15 +12,18 @@ PasteHotKey::~PasteHotKey()
 
 bool PasteHotKey::Register()
 {
-    registered_ = RegisterHotKey(window_, id_, modifiers_, virtualKey_) != FALSE;
-    return registered_;
+    m_registered = RegisterHotKey(m_window, m_id, m_modifiers, m_virtualKey) != FALSE;
+    return m_registered;
 }
 
-void PasteHotKey::Unregister()
+bool PasteHotKey::Unregister()
 {
-    if (registered_)
+    if (m_registered)
     {
-        UnregisterHotKey(window_, id_);
-        registered_ = false;
+        UnregisterHotKey(m_window, m_id);
+        m_registered = false;
+        return true;
     }
+    
+    return false;
 }

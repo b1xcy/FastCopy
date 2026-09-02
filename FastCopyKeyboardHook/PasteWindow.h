@@ -3,26 +3,33 @@
 
 #include <Windows.h>
 #include <wil/resource.h>
-#include <functional>
+
+class KeyboardHookApp;
 
 // The message-only window (HWND_MESSAGE) that receives hot-key and paste
-// messages. Window lifecycle messages are handled here; everything else is
-// forwarded to the handler.
+// messages. It owns the single switch over the window messages: lifecycle
+// messages are handled here, the rest call straight into the owner's handler
+// for that message, so no second switch is needed.
+//
+// The owner is named outright rather than held as a callback: dispatching is
+// then a direct call the optimizer can inline, with nothing stored per instance
+// beyond the owner itself.
 class PasteWindow
 {
 public:
-    using Handler = std::function<LRESULT(UINT message, WPARAM wParam, LPARAM lParam)>;
-
-    PasteWindow(HINSTANCE instance, Handler handler);
+    PasteWindow(HINSTANCE instance, KeyboardHookApp* owner);
 
     PasteWindow(PasteWindow const&) = delete;
     PasteWindow& operator=(PasteWindow const&) = delete;
 
-    HWND handle() const { return m_window.get(); }
+    HWND Handle() const { return m_window.get(); }
 
 private:
     static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+    static KeyboardHookApp* owner(HWND window);
 
+    // Declared before m_window so the owner is set before the window can
+    // dispatch a message, and still set while the window is being destroyed.
+    KeyboardHookApp* m_owner{};
     wil::unique_hwnd m_window{};
-    Handler m_handler;
 };

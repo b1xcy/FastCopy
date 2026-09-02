@@ -1,8 +1,7 @@
-#include "KeyboardHookApp.h"
+﻿#include "KeyboardHookApp.h"
 #include "ClipboardFileTransfer.h"
 #include "ExplorerWindow.h"
 #include "FastCopyLauncher.h"
-#include "../Public/KeyboardHookSettings.h"
 
 #include <wil/resource.h>
 #include <wil/result_macros.h>
@@ -12,11 +11,9 @@
 #include <string>
 
 KeyboardHookApp::KeyboardHookApp(HINSTANCE instance)
-    : window_{ instance, [this](UINT message, WPARAM wParam, LPARAM lParam)
-               { return OnWindowMessage(message, wParam, lParam); } },
-      pasteHotKey_{ window_.handle(), pasteHotKeyId, MOD_CONTROL | MOD_NOREPEAT, L'V' },
-      keyboardHook_{ instance, [this](int code, WPARAM wParam, LPARAM lParam)
-                     { return OnKeyboardEvent(code, wParam, lParam); } }
+    : m_window{ instance, this },
+      m_pasteHotKey{ m_window.Handle(), pasteHotKeyId, MOD_CONTROL | MOD_NOREPEAT, L'V' },
+      m_keyboardHook{ instance, this }
 {
 }
 
@@ -38,28 +35,15 @@ void KeyboardHookApp::ShowError(char const* message)
 
 int KeyboardHookApp::Run()
 {
-    if (!KeyboardHookSettings::IsEnabled())
-    {
-        return 0;
-    }
-
-    wil::unique_mutex singleton{ CreateMutexW(nullptr, FALSE, KeyboardHookSettings::SingletonName) };
-    if (!singleton || GetLastError() == ERROR_ALREADY_EXISTS)
-    {
-        return 0;
-    }
-
     THROW_IF_FAILED(OleInitialize(nullptr));
     auto uninitializeOle = wil::scope_exit([] { OleUninitialize(); });
 
     // RegisterHotKey gives us a message-queue path even when the low-level hook
     // cannot observe a particular desktop. The low-level hook runs in parallel
     // so Explorer's own Ctrl+V accelerator is explicitly suppressed.
-    pasteHotKey_.Register();
-    if (!pasteHotKey_.registered() && !keyboardHook_.installed())
-    {
+    auto const registered = m_pasteHotKey.Register();
+    if (!registered && !m_keyboardHook.installed())
         return 1;
-    }
 
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0)
@@ -70,116 +54,134 @@ int KeyboardHookApp::Run()
     return 0;
 }
 
-LRESULT KeyboardHookApp::OnWindowMessage(UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT KeyboardHookApp::onHotKey(int hotKeyId)
 {
-    switch (message)
+    if (hotKeyId == pasteHotKeyId && !m_pasteKeyGesture)
     {
-    case WM_HOTKEY:
-        if (wParam == pasteHotKeyId && !pasteKeyGesture_)
-        {
-            RequestPaste(GetForegroundWindow());
-        }
-        return 0;
-    case pasteMessage:
-        try
-        {
-            HandlePaste(reinterpret_cast<HWND>(wParam));
-        }
-        catch (wil::ResultException const& e)
-        {
-            ShowError(e.what());
-        }
-        catch (std::exception const& e)
-        {
-            ShowError(e.what());
-        }
-        return 0;
-    case WM_TIMER:
-        if (wParam == pasteHotKeyRestoreTimerId)
-        {
-            KillTimer(window_.handle(), pasteHotKeyRestoreTimerId);
-            pasteHotKey_.Register();
-        }
-        return 0;
-    default:
-        return DefWindowProcW(window_.handle(), message, wParam, lParam);
+        requestPaste(GetForegroundWindow());
     }
+    return 0;
 }
 
-LRESULT KeyboardHookApp::OnKeyboardEvent(int code, WPARAM wParam, LPARAM lParam)
+LRESULT KeyboardHookApp::onPasteRequested(HWND expectedExplorerWindow)
 {
-    if (code != HC_ACTION)
+    try
     {
-        return CallNextHookEx(nullptr, code, wParam, lParam);
+        handlePaste(expectedExplorerWindow);
     }
-
-    auto const event = reinterpret_cast<KBDLLHOOKSTRUCT const*>(lParam);
-    auto const isReplayInput = (event->flags & LLKHF_INJECTED) != 0 &&
-        event->dwExtraInfo == replayInputMarker;
-    auto const keyDown = wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN;
-    auto const keyUp = wParam == WM_KEYUP || wParam == WM_SYSKEYUP;
-    if (!isReplayInput && (keyDown || keyUp))
+    catch (wil::ResultException const& e)
     {
-        auto const pressed = keyDown;
-        switch (event->vkCode)
-        {
+        ShowError(e.what());
+    }
+    catch (std::exception const& e)
+    {
+        ShowError(e.what());
+    }
+    return 0;
+}
+
+LRESULT KeyboardHookApp::onTimer(UINT_PTR timerId)
+{
+    if (timerId == pasteHotKeyRestoreTimerId)
+    {
+        KillTimer(m_window.Handle(), pasteHotKeyRestoreTimerId);
+        m_pasteHotKey.Register();
+    }
+    return 0;
+}
+
+bool KeyboardHookApp::isReplayInput(KBDLLHOOKSTRUCT const& event)
+{
+    return (event.flags & LLKHF_INJECTED) != 0 && event.dwExtraInfo == replayInputMarker;
+}
+
+void KeyboardHookApp::updateModifierState(DWORD virtualKey, bool pressed)
+{
+    switch (virtualKey)
+    {
         case VK_LCONTROL:
         case VK_RCONTROL:
         case VK_CONTROL:
-            controlDown_ = pressed;
-            break;
+            m_controlDown = pressed;
+            return;
         case VK_LSHIFT:
         case VK_RSHIFT:
         case VK_SHIFT:
-            shiftDown_ = pressed;
-            break;
+            m_shiftDown = pressed;
+            return;
         case VK_LMENU:
         case VK_RMENU:
         case VK_MENU:
-            altDown_ = pressed;
-            break;
+            m_altDown = pressed;
+            return;
         case VK_LWIN:
         case VK_RWIN:
-            winDown_ = pressed;
-            break;
+            m_winDown = pressed;
+            return;
         default:
-            break;
-        }
+            return;
     }
+}
 
+bool KeyboardHookApp::onKeyDown(KBDLLHOOKSTRUCT const& event)
+{
     // Only non-replayed V key events are of interest.
-    if (isReplayInput || event->vkCode != L'V')
+    if (isReplayInput(event))
     {
-        return CallNextHookEx(nullptr, code, wParam, lParam);
+        return false;
     }
 
-    // End an intercepted paste gesture on key-up.
-    if (keyUp && interceptedPasteKey_)
+    updateModifierState(event.vkCode, true);
+    if (event.vkCode != L'V')
     {
-        interceptedPasteKey_ = false;
-        pasteKeyGesture_ = false;
-        return 1;
+        return false;
     }
 
     // Begin a paste gesture: Ctrl+V pressed in an Explorer window.
-    auto const modifiersMatch = controlDown_ && !shiftDown_ && !altDown_ && !winDown_;
-    if (keyDown && modifiersMatch && IsExplorerWindow(GetForegroundWindow()))
+    auto const modifiersMatch = m_controlDown && !m_shiftDown && !m_altDown && !m_winDown;
+    if (!modifiersMatch || !IsExplorerWindow(GetForegroundWindow()))
     {
-        if (!interceptedPasteKey_)
-        {
-            interceptedPasteKey_ = true;
-            pasteKeyGesture_ = true;
-            RequestPaste(GetForegroundWindow());
-        }
-        return 1;
+        return false;
     }
 
-    return CallNextHookEx(nullptr, code, wParam, lParam);
+    // Auto-repeat while the key is held reaches here again; suppress it without
+    // queueing a second paste.
+    if (!m_interceptedPasteKey)
+    {
+        m_interceptedPasteKey = true;
+        m_pasteKeyGesture = true;
+        requestPaste(GetForegroundWindow());
+    }
+    return true;
 }
 
-void KeyboardHookApp::HandlePaste(HWND expectedExplorerWindow)
+bool KeyboardHookApp::onKeyUp(KBDLLHOOKSTRUCT const& event)
 {
-    pasteRequestQueued_ = false;
+    if (isReplayInput(event))
+    {
+        return false;
+    }
+
+    updateModifierState(event.vkCode, false);
+    if (event.vkCode != L'V')
+    {
+        return false;
+    }
+
+    // End an intercepted paste gesture on key-up.
+    if (!m_interceptedPasteKey)
+    {
+        return false;
+    }
+
+    m_interceptedPasteKey = false;
+    m_pasteKeyGesture = false;
+    return true;
+}
+
+void KeyboardHookApp::handlePaste(HWND expectedExplorerWindow)
+{
+    m_pasteRequestQueued = false;
     auto const destination = GetExplorerFolder(expectedExplorerWindow);
     auto const transfer = destination ? ClipboardFileTransfer::Read() : std::nullopt;
     if (!destination || !transfer || !LaunchFastCopy(*transfer, *destination))
@@ -188,38 +190,35 @@ void KeyboardHookApp::HandlePaste(HWND expectedExplorerWindow)
         // asynchronous request was queued.
         if (GetForegroundWindow() == expectedExplorerWindow)
         {
-            ReplayPaste();
+            replayPaste();
         }
         return;
     }
 
     if (transfer->move)
     {
-        ClearMoveClipboard();
+        clearMoveClipboard();
     }
 }
 
-void KeyboardHookApp::RequestPaste(HWND foregroundWindow)
+void KeyboardHookApp::requestPaste(HWND foregroundWindow)
 {
-    if (pasteRequestQueued_)
+    if (m_pasteRequestQueued)
     {
         return;
     }
 
-    pasteRequestQueued_ = true;
-    if (!PostMessageW(window_.handle(), pasteMessage, reinterpret_cast<WPARAM>(foregroundWindow), 0))
+    m_pasteRequestQueued = true;
+    if (!PostMessageW(m_window.Handle(), pasteMessage, reinterpret_cast<WPARAM>(foregroundWindow), 0))
     {
-        pasteRequestQueued_ = false;
+        m_pasteRequestQueued = false;
     }
 }
 
-void KeyboardHookApp::ReplayPaste()
+void KeyboardHookApp::replayPaste()
 {
-    if (pasteHotKey_.registered())
-    {
-        pasteHotKey_.Unregister();
-        SetTimer(window_.handle(), pasteHotKeyRestoreTimerId, 250, nullptr);
-    }
+    if (m_pasteHotKey.Unregister())
+        SetTimer(m_window.Handle(), pasteHotKeyRestoreTimerId, 250, nullptr);
 
     INPUT input[4]{};
     UINT count{};
@@ -250,9 +249,9 @@ void KeyboardHookApp::ReplayPaste()
     SendInput(count, input, sizeof(INPUT));
 }
 
-void KeyboardHookApp::ClearMoveClipboard()
+void KeyboardHookApp::clearMoveClipboard()
 {
-    if (OpenClipboard(window_.handle()))
+    if (OpenClipboard(m_window.Handle()))
     {
         EmptyClipboard();
         CloseClipboard();

@@ -1,9 +1,10 @@
-#include "PasteWindow.h"
+﻿#include "PasteWindow.h"
+#include "KeyboardHookApp.h"
 
 #include <wil/result_macros.h>
 
-PasteWindow::PasteWindow(HINSTANCE instance, Handler handler)
-    : m_handler{ std::move(handler) }
+PasteWindow::PasteWindow(HINSTANCE instance, KeyboardHookApp* owner)
+    : m_owner{ owner }
 {
     WNDCLASSW windowClass
     {
@@ -45,11 +46,20 @@ LRESULT CALLBACK PasteWindow::windowProc(HWND window, UINT message, WPARAM wPara
         case WM_CLOSE:
             DestroyWindow(window);
             return 0;
+        case WM_HOTKEY:
+            return owner(window)->onHotKey(static_cast<int>(wParam));
+        case KeyboardHookApp::pasteMessage:
+            return owner(window)->onPasteRequested(reinterpret_cast<HWND>(wParam));
+        case WM_TIMER:
+            return owner(window)->onTimer(static_cast<UINT_PTR>(wParam));
         default:
-        {
-            if (auto self = reinterpret_cast<PasteWindow*>(GetWindowLongPtrW(window, GWLP_USERDATA)); self && self->m_handler)
-                return self->m_handler(message, wParam, lParam);
             return DefWindowProcW(window, message, wParam, lParam);
-        }
     }
+}
+
+KeyboardHookApp* PasteWindow::owner(HWND window)
+{
+    // Set by WM_NCCREATE, which precedes every message handled above.
+    auto const self = reinterpret_cast<PasteWindow*>(GetWindowLongPtrW(window, GWLP_USERDATA));
+    return self->m_owner;
 }
