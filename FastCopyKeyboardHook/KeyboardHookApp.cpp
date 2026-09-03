@@ -42,7 +42,7 @@ int KeyboardHookApp::Run()
     // cannot observe a particular desktop. The low-level hook runs in parallel
     // so Explorer's own Ctrl+V accelerator is explicitly suppressed.
     auto const registered = m_pasteHotKey.Register();
-    if (!registered && !m_keyboardHook.installed())
+    if (!registered && !m_keyboardHook.Installed())
         return 1;
 
     MSG message{};
@@ -90,11 +90,6 @@ LRESULT KeyboardHookApp::onTimer(UINT_PTR timerId)
     return 0;
 }
 
-bool KeyboardHookApp::isReplayInput(KBDLLHOOKSTRUCT const& event)
-{
-    return (event.flags & LLKHF_INJECTED) != 0 && event.dwExtraInfo == replayInputMarker;
-}
-
 void KeyboardHookApp::updateModifierState(DWORD virtualKey, bool pressed)
 {
     switch (virtualKey)
@@ -125,12 +120,6 @@ void KeyboardHookApp::updateModifierState(DWORD virtualKey, bool pressed)
 
 bool KeyboardHookApp::onKeyDown(KBDLLHOOKSTRUCT const& event)
 {
-    // Only non-replayed V key events are of interest.
-    if (isReplayInput(event))
-    {
-        return false;
-    }
-
     updateModifierState(event.vkCode, true);
     if (event.vkCode != L'V')
     {
@@ -157,11 +146,6 @@ bool KeyboardHookApp::onKeyDown(KBDLLHOOKSTRUCT const& event)
 
 bool KeyboardHookApp::onKeyUp(KBDLLHOOKSTRUCT const& event)
 {
-    if (isReplayInput(event))
-    {
-        return false;
-    }
-
     updateModifierState(event.vkCode, false);
     if (event.vkCode != L'V')
     {
@@ -182,22 +166,27 @@ bool KeyboardHookApp::onKeyUp(KBDLLHOOKSTRUCT const& event)
 void KeyboardHookApp::handlePaste(HWND expectedExplorerWindow)
 {
     m_pasteRequestQueued = false;
-    auto const destination = GetExplorerFolder(expectedExplorerWindow);
-    auto const transfer = destination ? ClipboardFileTransfer::Read() : std::nullopt;
-    if (!destination || !transfer || !LaunchFastCopy(*transfer, *destination))
+
+    // Each step gates the next: the clipboard is not read without a folder to paste
+    // into, and nothing is launched until both are in hand.
+    if (auto const destination = GetExplorerFolder(expectedExplorerWindow))
     {
-        // Never replay into a different foreground window if focus changed while this
-        // asynchronous request was queued.
-        if (GetForegroundWindow() == expectedExplorerWindow)
+        auto const transfer = ClipboardFileTransfer::Read();
+        if (transfer && LaunchFastCopy(*transfer, *destination))
         {
-            replayPaste();
+            if (transfer->move)
+            {
+                clearMoveClipboard();
+            }
+            return;
         }
-        return;
     }
 
-    if (transfer->move)
+	// When failed, replays ctrl+v when the foreground window is indeed the same one 
+    // that the paste was requested
+    if (GetForegroundWindow() == expectedExplorerWindow)
     {
-        clearMoveClipboard();
+        replayPaste();
     }
 }
 
@@ -209,7 +198,7 @@ void KeyboardHookApp::requestPaste(HWND foregroundWindow)
     }
 
     m_pasteRequestQueued = true;
-    if (!PostMessageW(m_window.Handle(), pasteMessage, reinterpret_cast<WPARAM>(foregroundWindow), 0))
+    if (!PostMessageW(m_window.Handle(), PasteRequest, reinterpret_cast<WPARAM>(foregroundWindow), 0))
     {
         m_pasteRequestQueued = false;
     }
@@ -217,36 +206,13 @@ void KeyboardHookApp::requestPaste(HWND foregroundWindow)
 
 void KeyboardHookApp::replayPaste()
 {
+    // The hot key outranks normal keyboard routing, so it would capture the replayed
+    // Ctrl+V before Explorer ever saw it. SendInput only queues the events, hence the
+    // timer rather than registering again right away.
     if (m_pasteHotKey.Unregister())
         SetTimer(m_window.Handle(), pasteHotKeyRestoreTimerId, 250, nullptr);
 
-    INPUT input[4]{};
-    UINT count{};
-    auto const controlIsDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-    if (!controlIsDown)
-    {
-        input[count].type = INPUT_KEYBOARD;
-        input[count++].ki.wVk = VK_CONTROL;
-    }
-
-    input[count].type = INPUT_KEYBOARD;
-    input[count++].ki.wVk = L'V';
-    input[count].type = INPUT_KEYBOARD;
-    input[count].ki.wVk = L'V';
-    input[count++].ki.dwFlags = KEYEVENTF_KEYUP;
-
-    if (!controlIsDown)
-    {
-        input[count].type = INPUT_KEYBOARD;
-        input[count].ki.wVk = VK_CONTROL;
-        input[count++].ki.dwFlags = KEYEVENTF_KEYUP;
-    }
-
-    for (UINT index = 0; index < count; ++index)
-    {
-        input[index].ki.dwExtraInfo = replayInputMarker;
-    }
-    SendInput(count, input, sizeof(INPUT));
+    KeyboardHook::ReplayPaste();
 }
 
 void KeyboardHookApp::clearMoveClipboard()

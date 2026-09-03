@@ -48,7 +48,7 @@ LRESULT CALLBACK PasteWindow::windowProc(HWND window, UINT message, WPARAM wPara
             return 0;
         case WM_HOTKEY:
             return owner(window)->onHotKey(static_cast<int>(wParam));
-        case KeyboardHookApp::pasteMessage:
+        case KeyboardHookApp::PasteRequest:
             return owner(window)->onPasteRequested(reinterpret_cast<HWND>(wParam));
         case WM_TIMER:
             return owner(window)->onTimer(static_cast<UINT_PTR>(wParam));

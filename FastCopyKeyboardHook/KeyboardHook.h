@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <wil/resource.h>
 
 #include <Windows.h>
@@ -17,10 +17,24 @@ public:
     KeyboardHook(KeyboardHook const&) = delete;
     KeyboardHook& operator=(KeyboardHook const&) = delete;
 
-    bool installed() const { return m_hook != nullptr; }
+    bool Installed() const { return m_hook != nullptr; }
+
+    // Synthesizes a Ctrl+V, tagged so that the hook recognizes it as its own and
+    // passes it through untouched. Static because the replay is still needed when
+    // the hook could not be installed.
+    static void ReplayPaste();
 
 private:
     static LRESULT CALLBACK procedure(int code, WPARAM wParam, LPARAM lParam);
+    
+    static constexpr ULONG_PTR ReplayInputMarker = 0x52435856;
+    
+    constexpr static bool isReplayInput(KBDLLHOOKSTRUCT const& event)
+    {
+        // dwExtraInfo is not a trust boundary, so the injected flag is required as well:
+        // a real keystroke can then never be mistaken for a replay.
+        return (event.flags & LLKHF_INJECTED) != 0 && event.dwExtraInfo == ReplayInputMarker;
+    }
 
     static KeyboardHook* s_instance;
 
