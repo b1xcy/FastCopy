@@ -5,7 +5,6 @@
     <Natvis Include="$(MSBuildThisFileDirectory)..\..\natvis\wil.natstepfilter" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ClipboardFileTransfer.cpp" />
     <ClCompile Include="ExplorerFolderResolver.cpp" />
     <ClCompile Include="ExplorerWindow.cpp" />
     <ClCompile Include="FastCopyLauncher.cpp" />
@@ -20,11 +19,16 @@
     <ClCompile Include="..\Public\ShellWindows.cpp">
       <Filter>COM</Filter>
     </ClCompile>
+    <ClCompile Include="ClipboardFormat.cpp">
+      <Filter>Clipboard</Filter>
+    </ClCompile>
+    <ClCompile Include="ClipboardFileTransfer.cpp">
+      <Filter>Clipboard</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\KeyboardHookSettings.h" />
     <ClInclude Include="..\Public\ModulePath.h" />
-    <ClInclude Include="ClipboardFileTransfer.h" />
     <ClInclude Include="ExplorerFolderResolver.h" />
     <ClInclude Include="ExplorerWindow.h" />
     <ClInclude Include="FastCopyLauncher.h" />
@@ -38,6 +42,12 @@
     <ClInclude Include="..\Public\ShellWindows.h">
       <Filter>COM</Filter>
     </ClInclude>
+    <ClInclude Include="ClipboardFileTransfer.h">
+      <Filter>Clipboard</Filter>
+    </ClInclude>
+    <ClInclude Include="ClipboardFormat.h">
+      <Filter>Clipboard</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -45,6 +55,9 @@
   <ItemGroup>
     <Filter Include="COM">
       <UniqueIdentifier>{ae9aa2af-ca54-4f5a-9afd-0a572a4d47c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Clipboard">
+      <UniqueIdentifier>{2bfedd1b-1e77-4475-926b-27f60cc0cf8e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

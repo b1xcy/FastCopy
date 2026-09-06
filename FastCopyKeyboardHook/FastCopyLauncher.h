@@ -5,5 +5,5 @@
 #include <filesystem>
 
 [[nodiscard]] bool LaunchFastCopy(
-    ClipboardFileTransfer const& transfer,
+    ClipboardFileTransfer& transfer,
     std::filesystem::path const& destination);

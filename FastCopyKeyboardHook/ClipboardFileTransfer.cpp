@@ -1,148 +1,96 @@
 #include "ClipboardFileTransfer.h"
-
-#include <ole2.h>
-
+#include "ClipboardFormat.h"
 #include <wil/resource.h>
-
 #include <ShlObj_core.h>
-#include <ShObjIdl_core.h>
-#include <shellapi.h>
-#include <wrl/client.h>
+#include <algorithm>
+#include <cstddef>
 
-namespace
+static std::optional<DWORD> GetPreferredDropEffect()
 {
-    using Microsoft::WRL::ComPtr;
-
-    std::optional<DWORD> GetPreferredDropEffect(IDataObject* dataObject)
+    ClipboardFormat const effect{ RegisterClipboardFormatW(CFSTR_PREFERREDDROPEFFECT) };
+    if (!effect || effect.size() < sizeof(DWORD))
     {
-        FORMATETC format{};
-        format.cfFormat = static_cast<CLIPFORMAT>(RegisterClipboardFormatW(CFSTR_PREFERREDDROPEFFECT));
-        format.dwAspect = DVASPECT_CONTENT;
-        format.lindex = -1;
-        format.tymed = TYMED_HGLOBAL;
+        return std::nullopt;
+    }
+    return *reinterpret_cast<DWORD const*>(effect.data());
+}
 
-        STGMEDIUM medium{};
-        if (FAILED(dataObject->GetData(&format, &medium)))
-        {
-            return std::nullopt;
-        }
-
-        std::optional<DWORD> effect;
-        if (medium.tymed == TYMED_HGLOBAL && GlobalSize(medium.hGlobal) >= sizeof(DWORD))
-        {
-            auto const value = static_cast<DWORD const*>(GlobalLock(medium.hGlobal));
-            if (value)
-            {
-                effect = *value;
-                GlobalUnlock(medium.hGlobal);
-            }
-        }
-        ReleaseStgMedium(&medium);
-        return effect;
+static std::optional<std::vector<std::wstring>> ReadDropFiles()
+{
+    ClipboardFormat const drop{ CF_HDROP };
+    if (!drop)
+    {
+        return std::nullopt;
     }
 
-    std::optional<std::vector<wil::unique_cotaskmem_string>> ReadShellItems(IDataObject* dataObject)
+    // GlobalSize is the only bound available: the header carries neither a file count
+    // nor a list length, and the trailing empty string is the sole documented terminator.
+    auto const base = drop.data();
+    auto const size = drop.size();
+    if (size < sizeof(DROPFILES))
     {
-        ComPtr<IShellItemArray> items;
-        if (FAILED(SHCreateShellItemArrayFromDataObject(dataObject, IID_PPV_ARGS(&items))))
-        {
-            return std::nullopt;
-        }
-
-        DWORD itemCount{};
-        if (FAILED(items->GetCount(&itemCount)) || itemCount == 0)
-        {
-            return std::nullopt;
-        }
-
-        std::vector<wil::unique_cotaskmem_string> paths;
-        paths.reserve(itemCount);
-        for (DWORD index = 0; index < itemCount; ++index)
-        {
-            ComPtr<IShellItem> item;
-            wil::unique_cotaskmem_string path;
-            if (FAILED(items->GetItemAt(index, &item)) ||
-                FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, wil::out_param(path))))
-            {
-                return std::nullopt;
-            }
-            paths.push_back(std::move(path));
-        }
-        return paths;
+        return std::nullopt;
     }
 
-    std::optional<std::vector<wil::unique_cotaskmem_string>> ReadDropFiles(IDataObject* dataObject)
+    // pFiles is a byte offset rather than a fixed sizeof(DROPFILES), so a producer may
+    // pad between the header and the list. Explorer always writes wide, in-bounds and
+    // aligned offsets, but the clipboard holds data from any process and none of these
+    // properties are documented as guaranteed, so anything that fails to add up is
+    // refused instead of interpreted.
+    auto const& header = *reinterpret_cast<DROPFILES const*>(base);
+    if (!header.fWide ||
+        header.pFiles < sizeof(DROPFILES) ||
+        header.pFiles > size ||
+        header.pFiles % sizeof(wchar_t) != 0)
     {
-        FORMATETC format{};
-        format.cfFormat = CF_HDROP;
-        format.dwAspect = DVASPECT_CONTENT;
-        format.lindex = -1;
-        format.tymed = TYMED_HGLOBAL;
-
-        STGMEDIUM medium{};
-        if (FAILED(dataObject->GetData(&format, &medium)))
-        {
-            return std::nullopt;
-        }
-
-        auto const drop = static_cast<HDROP>(GlobalLock(medium.hGlobal));
-        if (!drop)
-        {
-            ReleaseStgMedium(&medium);
-            return std::nullopt;
-        }
-
-        std::vector<wil::unique_cotaskmem_string> paths;
-        auto const count = DragQueryFileW(drop, 0xFFFFFFFF, nullptr, 0);
-        paths.reserve(count);
-        for (UINT index = 0; index < count; ++index)
-        {
-            auto const length = DragQueryFileW(drop, index, nullptr, 0);
-            if (length == 0)
-            {
-                paths.clear();
-                break;
-            }
-            wil::unique_cotaskmem_string path(static_cast<PWSTR>(CoTaskMemAlloc((length + 1) * sizeof(wchar_t))));
-            if (!path || DragQueryFileW(drop, index, path.get(), length + 1) != length)
-            {
-                paths.clear();
-                break;
-            }
-            paths.push_back(std::move(path));
-        }
-
-        GlobalUnlock(medium.hGlobal);
-        ReleaseStgMedium(&medium);
-        return paths.empty() ? std::nullopt : std::optional{ std::move(paths) };
+        return std::nullopt;
     }
+
+    // A run of null-terminated paths ended by an extra null. Counting whole wchar_t from
+    // the list start is the bounds validation DragQueryFileW used to do for us, and the
+    // single forward walk is what it could not: it restarts from the head on every call,
+    // which made reading N paths quadratic.
+    auto const* cursor = reinterpret_cast<wchar_t const*>(base + header.pFiles);
+    auto const* const end = cursor + (size - header.pFiles) / sizeof(wchar_t);
+
+    std::vector<std::wstring> paths;
+    while (cursor < end && *cursor)
+    {
+        auto const* const terminator = std::find(cursor, end, L'\0');
+        if (terminator == end)
+        {
+            // The last path runs to the end of the block with no terminator in sight.
+            return std::nullopt;
+        }
+        paths.emplace_back(cursor, terminator);
+        cursor = terminator + 1;
+    }
+
+    return paths.empty() ? std::nullopt : std::optional{ std::move(paths) };
 }
 
 std::optional<ClipboardFileTransfer> ClipboardFileTransfer::Read()
 {
-    ComPtr<IDataObject> dataObject;
-    if (FAILED(OleGetClipboard(&dataObject)))
+    // Reading needs no owner window. Another process holding the clipboard open fails
+    // this outright, which is why the paths are copied out of the locked blocks and into
+    // the vector before the scope exit closes it again.
+    if (!OpenClipboard(nullptr))
+    {
+        return std::nullopt;
+    }
+    auto const closeClipboard = wil::scope_exit([] { CloseClipboard(); });
+
+    auto paths = ReadDropFiles();
+    if (!paths)
     {
         return std::nullopt;
     }
 
-    ClipboardFileTransfer transfer;
-    if (auto shellPaths = ReadShellItems(dataObject.Get()))
+    ClipboardFileTransfer transfer{ .paths = std::move(*paths) };
+    if (auto const effect = GetPreferredDropEffect())
     {
-        transfer.paths = std::move(*shellPaths);
-    }
-    else if (auto dropPaths = ReadDropFiles(dataObject.Get()))
-    {
-        transfer.paths = std::move(*dropPaths);
-    }
-    else
-    {
-        return std::nullopt;
-    }
-
-    if (auto const effect = GetPreferredDropEffect(dataObject.Get()))
-    {
-        transfer.move = (*effect & DROPEFFECT_MOVE) != 0 && (*effect & DROPEFFECT_COPY) == 0;
+        auto const value = *effect;
+        transfer.move = (value & DROPEFFECT_MOVE) && !(value & DROPEFFECT_COPY);
     }
 
     return transfer;

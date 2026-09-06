@@ -57,6 +57,13 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>Ole32.lib;Shell32.lib;Shlwapi.lib;User32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <!-- The running instance holds a lock on the copy in the AppX layout, so the
+           post-build copy below would silently fail and leave a stale binary deployed.
+           taskkill reports 128 when nothing was running, hence the explicit exit. -->
+      <Command>taskkill /IM $(TargetFileName) /F 2&gt;nul
+exit 0</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>if not exist "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\AppX" mkdir "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\AppX"
 xcopy "$(TargetPath)" "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\AppX\" /Y /C /I</Command>
@@ -66,6 +73,7 @@ xcopy "$(TargetPath)" "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\AppX\
     <ClCompile Include="..\Public\ShellWindows.cpp" />
     <ClCompile Include="..\Public\WebBrowser2.cpp" />
     <ClCompile Include="ClipboardFileTransfer.cpp" />
+    <ClCompile Include="ClipboardFormat.cpp" />
     <ClCompile Include="ExplorerFolderResolver.cpp" />
     <ClCompile Include="ExplorerWindow.cpp" />
     <ClCompile Include="FastCopyLauncher.cpp" />
@@ -81,6 +89,7 @@ xcopy "$(TargetPath)" "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\AppX\
     <ClInclude Include="..\Public\ShellWindows.h" />
     <ClInclude Include="..\Public\WebBrowser2.h" />
     <ClInclude Include="ClipboardFileTransfer.h" />
+    <ClInclude Include="ClipboardFormat.h" />
     <ClInclude Include="ExplorerFolderResolver.h" />
     <ClInclude Include="ExplorerWindow.h" />
     <ClInclude Include="FastCopyLauncher.h" />

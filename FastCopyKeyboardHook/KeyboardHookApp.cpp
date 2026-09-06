@@ -171,7 +171,7 @@ void KeyboardHookApp::handlePaste(HWND expectedExplorerWindow)
     // into, and nothing is launched until both are in hand.
     if (auto const destination = GetExplorerFolder(expectedExplorerWindow))
     {
-        auto const transfer = ClipboardFileTransfer::Read();
+        auto transfer = ClipboardFileTransfer::Read();
         if (transfer && LaunchFastCopy(*transfer, *destination))
         {
             if (transfer->move)

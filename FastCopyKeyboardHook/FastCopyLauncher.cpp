@@ -27,7 +27,7 @@ namespace
         return error ? std::nullopt : std::optional{ result };
     }
 
-    std::optional<std::filesystem::path> WriteRecordFile(ClipboardFileTransfer const& transfer)
+    std::optional<std::filesystem::path> WriteRecordFile(ClipboardFileTransfer& transfer)
     {
         auto const directory = GetRecordDirectory();
         if (!directory)
@@ -56,13 +56,14 @@ namespace
         }
 
         bool succeeded = true;
-        for (auto const& source : transfer.paths)
+        for (auto& source : transfer.paths)
         {
-            std::wstring normalized{ source.get() };
-            std::ranges::replace(normalized, L'\\', L'/');
-            auto const length = normalized.size();
+            // Rewritten in place. The record format wants forward slashes, and owning
+            // the string is what lets this write it without a per-path copy.
+            std::ranges::replace(source, L'\\', L'/');
+            auto const length = source.size();
             succeeded = fwrite(&length, sizeof(length), 1, file) == 1 &&
-                fwrite(normalized.data(), sizeof(wchar_t), length, file) == length;
+                fwrite(source.data(), sizeof(wchar_t), length, file) == length;
             if (!succeeded)
             {
                 break;
@@ -82,7 +83,7 @@ namespace
 
 }
 
-bool LaunchFastCopy(ClipboardFileTransfer const& transfer, std::filesystem::path const& destination)
+bool LaunchFastCopy(ClipboardFileTransfer& transfer, std::filesystem::path const& destination)
 {
     auto const recordPath = WriteRecordFile(transfer);
     if (!recordPath)
@@ -90,12 +91,9 @@ bool LaunchFastCopy(ClipboardFileTransfer const& transfer, std::filesystem::path
         return false;
     }
 
-    auto destinationText = destination.wstring();
-    auto recordText = recordPath->wstring();
-    std::ranges::replace(destinationText, L'\\', L'/');
-    std::ranges::replace(recordText, L'\\', L'/');
+    auto uri = std::format(LR"(fastcopy://"{}"|"{}")", destination.wstring(), recordPath->wstring());
+	std::ranges::replace(uri, L'\\', L'/');
 
-    auto const uri = std::format(LR"(fastcopy://"{}"|"{}")", destinationText, recordText);
     AllowSetForegroundWindow(ASFW_ANY);
     auto const launchResult = reinterpret_cast<INT_PTR>(ShellExecuteW(
         nullptr,

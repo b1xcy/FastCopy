@@ -700,8 +700,8 @@ xcopy "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\RobocopyInjection.dll
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Package|Win32'">true</DeploymentContent>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Package|x64'">true</DeploymentContent>
     </None>
-    <None Include="..\x64\Package\FastCopy\FastCopyKeyboardHook.exe">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Package|x64'">true</DeploymentContent>
+    <None Include="..\x64\$(Configuration)\FastCopy\FastCopyKeyboardHook.exe">
+      <DeploymentContent>true</DeploymentContent>
     </None>
     <None Include="..\x64\Package\FastCopy\RobocopyInjection.dll">
       <DeploymentContent>true</DeploymentContent>

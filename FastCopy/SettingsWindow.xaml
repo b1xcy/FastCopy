@@ -830,7 +830,7 @@
                     </StackPanel>
                 </essential:SettingsCard>
 
-                <essential:SettingsCard x:Uid="MultipleInstanceBehaviorSettingItem" IsEnabled="False">
+                <!--<essential:SettingsCard x:Uid="MultipleInstanceBehaviorSettingItem" IsEnabled="False">
                     <ToolTipService.ToolTip>
                         <ToolTip x:Uid="UnderDevelopmentTooltip" />
                     </ToolTipService.ToolTip>
@@ -859,7 +859,7 @@
                             </ToolTipService.ToolTip>
                         </essential:SegmentedItem>
                     </essential:Segmented>
-                </essential:SettingsCard>
+                </essential:SettingsCard>-->
 
                 <essential:SettingsCard x:Uid="ThemeSettingItem">
                     <essential:SettingsCard.HeaderIcon>
