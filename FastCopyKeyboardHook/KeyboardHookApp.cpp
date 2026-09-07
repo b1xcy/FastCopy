@@ -26,8 +26,7 @@ int KeyboardHookApp::Run()
     // RegisterHotKey gives us a message-queue path even when the low-level hook
     // cannot observe a particular desktop. The low-level hook runs in parallel
     // so Explorer's own Ctrl+V accelerator is explicitly suppressed.
-    auto const registered = m_pasteHotKey.Register();
-    if (!registered && !m_keyboardHook.Installed())
+    if (!m_pasteHotKey.Register() && !m_keyboardHook.Installed())
         return 1;
 
     MSG message{};

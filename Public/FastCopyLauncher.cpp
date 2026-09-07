@@ -1,8 +1,6 @@
 #include "FastCopyLauncher.h"
-
 #include <Windows.h>
 #include <shellapi.h>
-
 #include <algorithm>
 #include <format>
 #include <string>

@@ -1,10 +1,7 @@
 #pragma once
-
 #include <wil/com.h>
-
 #include <ExDisp.h>
 #include <ShObjIdl_core.h>
-
 #include <filesystem>
 #include <optional>
 

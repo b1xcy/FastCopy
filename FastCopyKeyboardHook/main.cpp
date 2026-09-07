@@ -1,9 +1,6 @@
 #include "KeyboardHookApp.h"
 #include "../Public/KeyboardHookSettings.h"
-
 #include <wil/resource.h>
-#include <wil/result_macros.h>
-
 #include <Windows.h>
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
