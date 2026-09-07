@@ -5,9 +5,7 @@
     <Natvis Include="$(MSBuildThisFileDirectory)..\..\natvis\wil.natstepfilter" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ExplorerFolderResolver.cpp" />
     <ClCompile Include="ExplorerWindow.cpp" />
-    <ClCompile Include="FastCopyLauncher.cpp" />
     <ClCompile Include="KeyboardHook.cpp" />
     <ClCompile Include="KeyboardHookApp.cpp" />
     <ClCompile Include="main.cpp" />
@@ -25,13 +23,14 @@
     <ClCompile Include="ClipboardFileTransfer.cpp">
       <Filter>Clipboard</Filter>
     </ClCompile>
+    <ClCompile Include="..\Public\AppFolders.cpp" />
+    <ClCompile Include="..\Public\ExplorerFolder.cpp" />
+    <ClCompile Include="..\Public\FastCopyLauncher.cpp" />
+    <ClCompile Include="..\Public\RecordFile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\KeyboardHookSettings.h" />
-    <ClInclude Include="..\Public\ModulePath.h" />
-    <ClInclude Include="ExplorerFolderResolver.h" />
     <ClInclude Include="ExplorerWindow.h" />
-    <ClInclude Include="FastCopyLauncher.h" />
     <ClInclude Include="KeyboardHook.h" />
     <ClInclude Include="KeyboardHookApp.h" />
     <ClInclude Include="PasteHotKey.h" />
@@ -48,6 +47,13 @@
     <ClInclude Include="ClipboardFormat.h">
       <Filter>Clipboard</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\COMInitializeHelper.h">
+      <Filter>COM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\AppFolders.h" />
+    <ClInclude Include="..\Public\ExplorerFolder.h" />
+    <ClInclude Include="..\Public\FastCopyLauncher.h" />
+    <ClInclude Include="..\Public\RecordFile.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

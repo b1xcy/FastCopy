@@ -52,10 +52,13 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32_LEAN_AND_MEAN;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Package|x64'">$(SolutionDir)Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>Ole32.lib;Shell32.lib;Shlwapi.lib;User32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Ole32.lib;Shell32.lib;Shlwapi.lib;User32.lib;WindowsApp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <!-- The running instance holds a lock on the copy in the AppX layout, so the
@@ -70,13 +73,15 @@ xcopy "$(TargetPath)" "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\AppX\
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Public\AppFolders.cpp" />
+    <ClCompile Include="..\Public\ExplorerFolder.cpp" />
+    <ClCompile Include="..\Public\FastCopyLauncher.cpp" />
+    <ClCompile Include="..\Public\RecordFile.cpp" />
     <ClCompile Include="..\Public\ShellWindows.cpp" />
     <ClCompile Include="..\Public\WebBrowser2.cpp" />
     <ClCompile Include="ClipboardFileTransfer.cpp" />
     <ClCompile Include="ClipboardFormat.cpp" />
-    <ClCompile Include="ExplorerFolderResolver.cpp" />
     <ClCompile Include="ExplorerWindow.cpp" />
-    <ClCompile Include="FastCopyLauncher.cpp" />
     <ClCompile Include="KeyboardHook.cpp" />
     <ClCompile Include="KeyboardHookApp.cpp" />
     <ClCompile Include="main.cpp" />
@@ -84,15 +89,17 @@ xcopy "$(TargetPath)" "$(SolutionDir)$(Platform)\$(Configuration)\FastCopy\AppX\
     <ClCompile Include="PasteWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Public\AppFolders.h" />
+    <ClInclude Include="..\Public\COMInitializeHelper.h" />
+    <ClInclude Include="..\Public\ExplorerFolder.h" />
+    <ClInclude Include="..\Public\FastCopyLauncher.h" />
     <ClInclude Include="..\Public\KeyboardHookSettings.h" />
-    <ClInclude Include="..\Public\ModulePath.h" />
+    <ClInclude Include="..\Public\RecordFile.h" />
     <ClInclude Include="..\Public\ShellWindows.h" />
     <ClInclude Include="..\Public\WebBrowser2.h" />
     <ClInclude Include="ClipboardFileTransfer.h" />
     <ClInclude Include="ClipboardFormat.h" />
-    <ClInclude Include="ExplorerFolderResolver.h" />
     <ClInclude Include="ExplorerWindow.h" />
-    <ClInclude Include="FastCopyLauncher.h" />
     <ClInclude Include="KeyboardHook.h" />
     <ClInclude Include="KeyboardHookApp.h" />
     <ClInclude Include="PasteHotKey.h" />

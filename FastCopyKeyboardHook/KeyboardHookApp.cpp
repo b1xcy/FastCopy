@@ -1,14 +1,10 @@
 ﻿#include "KeyboardHookApp.h"
 #include "ClipboardFileTransfer.h"
 #include "ExplorerWindow.h"
-#include "FastCopyLauncher.h"
+#include "COMInitializeHelper.h"
+#include <objbase.h>
+#include <winrt/base.h>
 
-#include <wil/resource.h>
-#include <wil/result_macros.h>
-
-#include <ole2.h>
-
-#include <string>
 
 KeyboardHookApp::KeyboardHookApp(HINSTANCE instance)
     : m_window{ instance, this },
@@ -19,24 +15,13 @@ KeyboardHookApp::KeyboardHookApp(HINSTANCE instance)
 
 void KeyboardHookApp::ShowError(char const* message)
 {
-    if (!message)
-    {
-        message = "Unknown error";
-    }
-
-    auto const length = MultiByteToWideChar(CP_UTF8, 0, message, -1, nullptr, 0);
-    std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
-    if (length > 0)
-    {
-        MultiByteToWideChar(CP_UTF8, 0, message, -1, wide.data(), length);
-    }
+    winrt::hstring wide = message ? winrt::to_hstring(message) : L"Unknown error";
     MessageBoxW(nullptr, wide.c_str(), L"RoboCopyEx", MB_OK | MB_ICONERROR);
 }
 
 int KeyboardHookApp::Run()
 {
-    THROW_IF_FAILED(OleInitialize(nullptr));
-    auto uninitializeOle = wil::scope_exit([] { OleUninitialize(); });
+    COMInitializeHelper comHelper;
 
     // RegisterHotKey gives us a message-queue path even when the low-level hook
     // cannot observe a particular desktop. The low-level hook runs in parallel
@@ -172,7 +157,7 @@ void KeyboardHookApp::handlePaste(HWND expectedExplorerWindow)
     if (auto const destination = GetExplorerFolder(expectedExplorerWindow))
     {
         auto transfer = ClipboardFileTransfer::Read();
-        if (transfer && LaunchFastCopy(*transfer, *destination))
+        if (transfer && transfer->Paste(*destination))
         {
             if (transfer->move)
             {

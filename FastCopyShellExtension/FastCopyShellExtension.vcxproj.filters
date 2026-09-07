@@ -58,6 +58,21 @@
     <ClCompile Include="DllIconFormatter.cpp">
       <Filter>Icons</Filter>
     </ClCompile>
+    <ClCompile Include="..\Public\ModulePath.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Public\AppFolders.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Public\ExplorerFolder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Public\FastCopyLauncher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Public\RecordFile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Source.def">
@@ -104,6 +119,21 @@
     </ClInclude>
     <ClInclude Include="DllIconFormatter.h">
       <Filter>Icons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ModulePath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\AppFolders.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ExplorerFolder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\FastCopyLauncher.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\RecordFile.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

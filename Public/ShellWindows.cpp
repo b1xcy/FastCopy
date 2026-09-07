@@ -1,4 +1,5 @@
 #include "ShellWindows.h"
+#include <wil/resource.h>
 #include <wil/result_macros.h>
 
 long ShellWindows::Count()
@@ -25,7 +26,7 @@ std::optional<WebBrowser2> ShellWindows::GetForegroundExplorer()
     auto const count = shellWindows.Count();
     for (long i = 0; i < count; ++i)
     {
-        VARIANT itemIndex{};
+        wil::unique_variant itemIndex;
         itemIndex.vt = VT_I4;
         itemIndex.lVal = i;
         auto item = shellWindows.Item(itemIndex);
@@ -45,7 +46,7 @@ std::optional<WebBrowser2> ShellWindows::GetForegroundExplorer()
         //fallback
         for (long i = 0; i < count; ++i)
         {
-            VARIANT itemIndex{};
+            wil::unique_variant itemIndex;
             itemIndex.vt = VT_I4;
             itemIndex.lVal = i;
             auto item = shellWindows.Item(itemIndex);

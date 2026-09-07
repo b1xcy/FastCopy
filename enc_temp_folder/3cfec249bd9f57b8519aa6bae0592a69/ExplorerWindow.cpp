@@ -11,16 +11,16 @@
 #include <cwctype>
 #include <string>
 
-static std::array<wchar_t, 256> getWindowClass(HWND window)
+static std::array<wchar_t, 256> GetWindowClass(HWND window)
 {
     std::array<wchar_t, 256> buffer{};
     GetClassNameW(window, buffer.data(), static_cast<int>(buffer.size()));
     return buffer;
 }
 
-static bool isTextEntryWindow(HWND window)
+static bool IsTextEntryWindow(HWND window)
 {
-    auto className = getWindowClass(window);
+    auto className = GetWindowClass(window);
     std::ranges::transform(className, className.begin(), [](wchar_t value) { return std::towlower(value); });
     auto const* text = className.data();
     return std::wcsstr(text, L"edit") != nullptr ||
@@ -32,7 +32,7 @@ static bool isTextEntryWindow(HWND window)
 // (wil::ResultException) and are caught at the outer boundary; entries that are not
 // this frame are skipped, and a window whose active view does not support the older
 // IFolderView interfaces falls back to the browser location URL.
-static std::optional<std::filesystem::path> getActiveTabFolder(HWND frameWindow, GUITHREADINFO const& threadInfo)
+static std::optional<std::filesystem::path> ResolveActiveTabFolder(HWND frameWindow, GUITHREADINFO const& threadInfo)
 {
     ShellWindows shellWindows;
     auto const count = shellWindows.Count();
@@ -83,7 +83,7 @@ bool IsExplorerWindow(HWND window)
         return false;
     }
 
-    auto const className = getWindowClass(window);
+    auto const className = GetWindowClass(window);
     // The desktop is a valid paste target even though it is not an Explorer frame.
     if (std::wcscmp(className.data(), L"Progman") == 0 || std::wcscmp(className.data(), L"WorkerW") == 0)
     {
@@ -102,13 +102,13 @@ std::optional<std::filesystem::path> GetExplorerFolder(HWND expectedForegroundWi
 
     GUITHREADINFO threadInfo{ sizeof(threadInfo) };
     auto const foregroundThread = GetWindowThreadProcessId(expectedForegroundWindow, nullptr);
-    if (!GetGUIThreadInfo(foregroundThread, &threadInfo) || isTextEntryWindow(threadInfo.hwndFocus))
+    if (!GetGUIThreadInfo(foregroundThread, &threadInfo) || IsTextEntryWindow(threadInfo.hwndFocus))
     {
         return std::nullopt;
     }
 
     // The desktop has no shell view to resolve; its folder is the user's desktop.
-    auto const className = getWindowClass(expectedForegroundWindow);
+    auto const className = GetWindowClass(expectedForegroundWindow);
     if (std::wcscmp(className.data(), L"Progman") == 0 || std::wcscmp(className.data(), L"WorkerW") == 0)
     {
         wil::unique_cotaskmem_string desktopPath;
@@ -116,5 +116,5 @@ std::optional<std::filesystem::path> GetExplorerFolder(HWND expectedForegroundWi
         return std::filesystem::path{ desktopPath.get() };
     }
 
-    return getActiveTabFolder(expectedForegroundWindow, threadInfo);
+    return ResolveActiveTabFolder(expectedForegroundWindow, threadInfo);
 }
