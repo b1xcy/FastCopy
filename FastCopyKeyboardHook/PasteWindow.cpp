@@ -3,8 +3,7 @@
 
 #include <wil/result_macros.h>
 
-PasteWindow::PasteWindow(HINSTANCE instance, KeyboardHookApp* owner)
-    : m_owner{ owner }
+PasteWindow::PasteWindow(HINSTANCE instance, KeyboardHookApp* owner) : m_owner{ owner }
 {
     WNDCLASSW windowClass
     {

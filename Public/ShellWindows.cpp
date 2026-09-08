@@ -1,4 +1,4 @@
-#include "ShellWindows.h"
+﻿#include "ShellWindows.h"
 #include <wil/resource.h>
 #include <wil/result_macros.h>
 
@@ -16,6 +16,14 @@ WebBrowser2 ShellWindows::Item(VARIANT index)
 	return WebBrowser2{ value.query<IWebBrowser2>() };
 }
 
+WebBrowser2 ShellWindows::Item(long index)
+{
+	wil::unique_variant variantIndex;
+	variantIndex.vt = VT_I4;
+	variantIndex.lVal = index;
+	return Item(variantIndex);
+}
+
 std::optional<WebBrowser2> ShellWindows::GetForegroundExplorer()
 {
     std::optional<WebBrowser2> ret;
@@ -26,10 +34,7 @@ std::optional<WebBrowser2> ShellWindows::GetForegroundExplorer()
     auto const count = shellWindows.Count();
     for (long i = 0; i < count; ++i)
     {
-        wil::unique_variant itemIndex;
-        itemIndex.vt = VT_I4;
-        itemIndex.lVal = i;
-        auto item = shellWindows.Item(itemIndex);
+        auto item = shellWindows.Item(i);
         if (item.HWND() == hwnd && item.Visible())
         {
             //check if this tab is the active tab
@@ -46,10 +51,7 @@ std::optional<WebBrowser2> ShellWindows::GetForegroundExplorer()
         //fallback
         for (long i = 0; i < count; ++i)
         {
-            wil::unique_variant itemIndex;
-            itemIndex.vt = VT_I4;
-            itemIndex.lVal = i;
-            auto item = shellWindows.Item(itemIndex);
+            auto item = shellWindows.Item(i);
             if (item.HWND() == hwnd && item.Visible())
             {
                 ret.emplace(std::move(item));

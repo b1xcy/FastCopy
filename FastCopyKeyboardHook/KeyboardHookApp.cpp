@@ -23,11 +23,13 @@ int KeyboardHookApp::Run()
 {
     COMInitializeHelper comHelper;
 
-    // RegisterHotKey gives us a message-queue path even when the low-level hook
-    // cannot observe a particular desktop. The low-level hook runs in parallel
-    // so Explorer's own Ctrl+V accelerator is explicitly suppressed.
     if (!m_pasteHotKey.Register() && !m_keyboardHook.Installed())
+    {
+        ShowError(
+            "Ctrl+V could not be intercepted: neither the hot key nor the keyboard hook could be installed."
+        );
         return 1;
+    }
 
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0)

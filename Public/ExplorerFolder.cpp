@@ -1,10 +1,8 @@
-#include "ExplorerFolder.h"
-
+﻿#include "ExplorerFolder.h"
 #include <wil/resource.h>
-
+#include <PathCch.h>
 #include <ShlObj_core.h>
 #include <Shlwapi.h>
-
 #include <array>
 
 wil::com_ptr<IShellView> ExplorerFolder::ActiveView(IUnknown* browserOrSite)
@@ -33,7 +31,7 @@ wil::com_ptr<IShellView> ExplorerFolder::ActiveView(IUnknown* browserOrSite)
 std::optional<std::filesystem::path> ExplorerFolder::FromShellView(IShellView* view)
 {
     wil::com_ptr<IFolderView> folderView;
-    if (!view || FAILED(view->QueryInterface(IID_PPV_ARGS(folderView.put()))))
+    if (!view || FAILED(view->QueryInterface(folderView.put())))
     {
         return std::nullopt;
     }
@@ -52,7 +50,7 @@ std::optional<std::filesystem::path> ExplorerFolder::FromShellView(IShellView* v
 
     // Ex rather than SHGetPathFromIDListW: a folder can sit past MAX_PATH, and the
     // shorter form has nowhere to report that it truncated.
-    std::array<wchar_t, 32768> path{};
+    std::array<wchar_t, PATHCCH_MAX_CCH> path{};
     auto const converted = SHGetPathFromIDListEx(
         pidl.get(),
         path.data(),
@@ -71,7 +69,7 @@ std::optional<std::filesystem::path> ExplorerFolder::FromWebBrowser(IWebBrowser2
 
     // PathCreateFromUrlW unescapes and strips the scheme in one step, and fails outright
     // on a location that is no filesystem path at all - a search results view, say.
-    std::array<wchar_t, 32768> path{};
+    std::array<wchar_t, PATHCCH_MAX_CCH> path{};
     auto length = static_cast<DWORD>(path.size());
     return SUCCEEDED(PathCreateFromUrlW(location.get(), path.data(), &length, 0))
         ? std::optional{ std::filesystem::path{ path.data() } }

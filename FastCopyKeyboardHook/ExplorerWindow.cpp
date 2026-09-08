@@ -1,7 +1,8 @@
-#include "ExplorerWindow.h"
+﻿#include "ExplorerWindow.h"
 #include "ExplorerFolder.h"
 #include "ShellWindows.h"
 #include <objbase.h>
+#include <wil/com.h>
 #include <wil/resource.h>
 #include <wil/result_macros.h>
 #include <ShlObj_core.h>
@@ -16,6 +17,21 @@ static std::array<wchar_t, 256> getWindowClass(HWND window)
     std::array<wchar_t, 256> buffer{};
     GetClassNameW(window, buffer.data(), static_cast<int>(buffer.size()));
     return buffer;
+}
+
+static bool hasWindowClass(HWND window, auto&& classNames)
+{
+    return std::ranges::any_of(classNames, [className = getWindowClass(window)](auto const* candidate)
+    {
+        return std::wcscmp(className.data(), candidate) == 0;
+    });
+}
+
+// Desktop is a valid paste target even though it is not an Explorer frame, and it has no shell view either,
+static bool isDesktopHwnd(HWND window)
+{
+    constexpr std::array classNames{ L"Progman", L"WorkerW" };
+    return hasWindowClass(window, classNames);
 }
 
 static bool isTextEntryWindow(HWND window)
@@ -37,43 +53,41 @@ static std::optional<std::filesystem::path> getActiveTabFolder(HWND frameWindow,
     ShellWindows shellWindows;
     auto const count = shellWindows.Count();
 
-    std::optional<std::filesystem::path> locationFallback;
+    wil::com_ptr<IWebBrowser2> locationFallback;
     for (long index = 0; index < count; ++index)
     {
-        wil::unique_variant itemIndex;
-        itemIndex.vt = VT_I4;
-        itemIndex.lVal = index;
-
-        auto browser = shellWindows.Item(itemIndex);
+        auto browser = shellWindows.Item(index);
         if (browser.HWND() != frameWindow)
         {
             continue;
         }
 
-        if (!locationFallback)
-        {
-            locationFallback = ExplorerFolder::FromWebBrowser(browser.Get());
-        }
-
         auto const shellView = ExplorerFolder::ActiveView(browser.Get());
         HWND viewWindow{};
-        if (!shellView || FAILED(shellView->GetWindow(&viewWindow)))
-        {
-            continue;
-        }
 
         // Tabs of one window share the frame, so the focused view is what picks out the
         // tab the user is actually looking at.
-        if (threadInfo.hwndFocus == viewWindow || IsChild(viewWindow, threadInfo.hwndFocus))
+        if (shellView && SUCCEEDED(shellView->GetWindow(&viewWindow)) &&
+            (threadInfo.hwndFocus == viewWindow || IsChild(viewWindow, threadInfo.hwndFocus)))
         {
             if (auto folder = ExplorerFolder::FromShellView(shellView.get()))
             {
                 return folder;
             }
+
+            // Only one view holds the focus, so no later entry can be this tab, and its
+            // own location outranks any other entry's.
+            locationFallback = browser.Get();
+            break;
+        }
+
+        if (!locationFallback)
+        {
+            locationFallback = browser.Get();
         }
     }
 
-    return locationFallback;
+    return locationFallback ? ExplorerFolder::FromWebBrowser(locationFallback.get()) : std::nullopt;
 }
 
 bool IsExplorerWindow(HWND window)
@@ -83,14 +97,8 @@ bool IsExplorerWindow(HWND window)
         return false;
     }
 
-    auto const className = getWindowClass(window);
-    // The desktop is a valid paste target even though it is not an Explorer frame.
-    if (std::wcscmp(className.data(), L"Progman") == 0 || std::wcscmp(className.data(), L"WorkerW") == 0)
-    {
-        return true;
-    }
-    return std::wcscmp(className.data(), L"CabinetWClass") == 0 ||
-        std::wcscmp(className.data(), L"ExploreWClass") == 0;
+    constexpr std::array explorerClassNames{ L"CabinetWClass", L"ExploreWClass" };
+    return isDesktopHwnd(window) || hasWindowClass(window, explorerClassNames);
 }
 
 std::optional<std::filesystem::path> GetExplorerFolder(HWND expectedForegroundWindow)
@@ -108,8 +116,7 @@ std::optional<std::filesystem::path> GetExplorerFolder(HWND expectedForegroundWi
     }
 
     // The desktop has no shell view to resolve; its folder is the user's desktop.
-    auto const className = getWindowClass(expectedForegroundWindow);
-    if (std::wcscmp(className.data(), L"Progman") == 0 || std::wcscmp(className.data(), L"WorkerW") == 0)
+    if (isDesktopHwnd(expectedForegroundWindow))
     {
         wil::unique_cotaskmem_string desktopPath;
         THROW_IF_FAILED(SHGetKnownFolderPath(FOLDERID_Desktop, 0, nullptr, wil::out_param(desktopPath)));
