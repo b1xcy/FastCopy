@@ -6,14 +6,8 @@
 
 class KeyboardHookApp;
 
-// The message-only window (HWND_MESSAGE) that receives hot-key and paste
-// messages. It owns the single switch over the window messages: lifecycle
-// messages are handled here, the rest call straight into the owner's handler
-// for that message, so no second switch is needed.
-//
-// The owner is named outright rather than held as a callback: dispatching is
-// then a direct call the optimizer can inline, with nothing stored per instance
-// beyond the owner itself.
+// The message-only window (HWND_MESSAGE) that receives hot-key and paste messages
+// and also manages app lifetime
 class PasteWindow
 {
 public:

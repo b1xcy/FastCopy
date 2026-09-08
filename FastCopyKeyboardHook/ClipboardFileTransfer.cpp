@@ -105,9 +105,11 @@ static std::optional<std::filesystem::path> WriteRecordFile(ClipboardFileTransfe
 {
     FILETIME timestamp{};
     GetSystemTimePreciseAsFileTime(&timestamp);
-    ULARGE_INTEGER timestampValue{};
-    timestampValue.LowPart = timestamp.dwLowDateTime;
-    timestampValue.HighPart = timestamp.dwHighDateTime;
+    ULARGE_INTEGER const timestampValue
+    {
+        .LowPart = timestamp.dwLowDateTime,
+        .HighPart = timestamp.dwHighDateTime
+    };
     static std::atomic_uint sequence{};
 
     // The hook writes into its own folder: Recorder::HasRecord scans the shell
